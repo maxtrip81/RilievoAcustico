@@ -1,0 +1,1755 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<title>Rilievo Acustico</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: strumento di misura a quattro fasi; colonna di dati a sinistra, grafici a destra, una sola fase visibile alla volta. */
+:root {
+  --bg: #f1f4f5; --panel: #fcfcfb; --ink: #10181c; --ink-2: #47545c; --muted: #7b868d; --line: #dce2e5; --line-strong: #c0c9ce;
+  --accent: #0e6073; --accent-ink: #ffffff; --accent-soft: #dff0f3;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --good: #0ca30c; --warn: #fab219; --crit: #d03b3b; --good-ink: #006300;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1315; --panel: #191e20; --ink: #eef1f2; --ink-2: #bcc6cb; --muted: #86929a; --line: #293135; --line-strong: #3a454a;
+    --accent: #5fbdd0; --accent-ink: #06262e; --accent-soft: #14323a;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --good-ink: #0ca30c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1315; --panel: #191e20; --ink: #eef1f2; --ink-2: #bcc6cb; --muted: #86929a; --line: #293135; --line-strong: #3a454a;
+  --accent: #5fbdd0; --accent-ink: #06262e; --accent-soft: #14323a;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --good-ink: #0ca30c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 20px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: 26px; font-weight: 600; }
+h2 { font-size: 19px; font-weight: 600; }
+h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); font-family: var(--font-body); }
+p { margin: 0; }
+.lead { color: var(--ink-2); max-width: 65ch; }
+.top { display: flex; flex-direction: column; gap: 14px; }
+.steps { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line-strong); }
+.steps button { font: 600 14px var(--font-body); color: var(--ink-2); background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px 9px; cursor: pointer; margin-bottom: -1px; }
+.steps button span { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: 6px; }
+.steps button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.steps button:hover { color: var(--ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.step { display: flex; flex-direction: column; gap: 18px; }
+.cols { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.cols > * { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+@media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel > header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fields.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fields.one { grid-template-columns: minmax(0, 1fr); }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-2); min-width: 0; }
+input[type="number"], input[type="text"], select { font: 14px var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line-strong); border-radius: 4px; padding: 7px 8px; width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
+input[type="file"] { font: 13px var(--font-body); color: var(--ink-2); max-width: 100%; }
+.btn { font: 600 14px var(--font-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 4px; padding: 9px 14px; cursor: pointer; text-align: left; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn small { display: block; font-weight: 400; font-size: 12px; opacity: 0.85; }
+.btnrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.note { font-size: 13px; color: var(--ink-2); }
+.status { font-size: 14px; padding: 9px 12px; border-radius: 4px; background: var(--accent-soft); color: var(--ink); }
+.status.err { background: transparent; border: 1px solid var(--crit); }
+.tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; border: 1px solid var(--line-strong); color: var(--ink-2); white-space: nowrap; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.tile { background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.tile b { font: 600 24px var(--font-display); }
+.tile b small { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-left: 3px; }
+.tile span { font-size: 12px; color: var(--ink-2); }
+.tile em { font-style: normal; font-size: 12px; color: var(--muted); }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+td.n, th.n { text-align: right; }
+td input[type="number"] { width: 84px; padding: 5px 6px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.pill.crit i { background: var(--crit); } .pill.warn i { background: var(--warn); } .pill.good i { background: var(--good); }
+.chart { position: relative; }
+.chart svg { display: block; max-width: 100%; }
+.chart text { font: 11px var(--font-body); fill: var(--muted); font-variant-numeric: tabular-nums; }
+.chart text.ink { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; flex: none; }
+.legend i.band { height: 10px; opacity: 0.25; }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 4px; padding: 6px 8px; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); z-index: 2; }
+.tip b { display: block; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+ul.advice { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; max-width: 75ch; }
+.photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.photos figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.photos img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 14px; }
+.kv dt { color: var(--ink-2); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+#report-body { display: flex; flex-direction: column; gap: 18px; }
+@media print {
+  .top, .step:not(#s-report), .noprint { display: none !important; }
+  #s-report[hidden] { display: flex !important; }
+  body { background: #fff; } .panel { border: 0; padding: 0; }
+}
+@media (prefers-reduced-motion: no-preference) { .btn, .steps button { transition: color 0.12s, border-color 0.12s; } }
+.legend i.sw { width: 14px; height: 10px; border-radius: 2px; }
+.sign { align-self: flex-end; text-align: center; min-width: 240px; border-top: 1px solid var(--ink-2); padding-top: 6px; margin-top: 28px; font-size: 14px; }
+.sign b { display: block; font-family: var(--font-display); }
+#report-body svg { height: auto; }
+.v3d { width: 100%; display: block; touch-action: pan-y; cursor: grab; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+ol.advice { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; max-width: 75ch; }
+.guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.guide button { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 4px; font-size: 12px; color: var(--ink-2); min-width: 0; }
+.guide button:hover { border-color: var(--accent); }
+.guide button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.guide button b { font: 600 14px var(--font-body); color: var(--ink); }
+.guide button.done { border-color: var(--line); }
+.guide button.next { border-color: var(--accent); background: var(--accent-soft); }
+.btn.sm { padding: 4px 9px; font-size: 12px; }
+@media print { #guide { display: none !important; } }
+.filebtn { display: flex; flex-direction: column; gap: 6px; color: var(--ink); }
+.filebtn input { font-size: 12px; width: 100%; }
+.filebtn.drop { border-color: var(--accent); background: var(--accent-soft); }
+</style>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Rilievo Acustico</h1>
+      <p class="lead">Dalla geometria dell'ambiente e da una misura fatta con il dispositivo al dimensionamento dei pannelli fonoassorbenti.</p>
+    </div>
+    <nav class="steps" role="tablist" aria-label="Fasi del rilievo">
+      <button role="tab" id="tab-room" data-step="room" aria-selected="true"><span>1</span>Ambiente</button>
+      <button role="tab" id="tab-meas" data-step="meas" aria-selected="false"><span>2</span>Misura</button>
+      <button role="tab" id="tab-treat" data-step="treat" aria-selected="false"><span>3</span>Intervento</button>
+      <button role="tab" id="tab-report" data-step="report" aria-selected="false"><span>4</span>Report</button>
+    </nav>
+  </div>
+
+  <div class="panel" id="guide">
+    <header><h2>Percorso guidato</h2><span class="note" id="guide-note"></span></header>
+    <div class="guide" id="guide-list"></div>
+  </div>
+
+  <section class="step" id="s-room">
+    <div class="cols">
+      <div>
+        <div class="panel">
+          <header><h2>Scansione LiDAR</h2></header>
+          <ol class="advice">
+            <li>Su iPhone o iPad Pro apri <b>Polycam</b>, <b>3D Scanner App</b> o <b>Scaniverse</b> e scegli la modalità LiDAR.</li>
+            <li>Cammina lungo le pareti inquadrando pavimento, soffitto e tutti gli angoli.</li>
+            <li>Esporta il modello in formato <b>OBJ</b> (va bene anche lo ZIP che lo contiene) e salvalo in File.</li>
+            <li>Caricalo qui sotto: lunghezza, larghezza e altezza si compilano da sole e la stanza compare nella vista 3D.</li>
+          </ol>
+          <div class="fields two">
+            <label>File OBJ o ZIP<input type="file" id="scan-file" accept=".obj,.zip,text/plain,application/zip"></label>
+            <label>Asse verticale<select id="scan-up"><option value="y">Y (predefinito)</option><option value="z">Z (se la stanza appare coricata)</option></select></label>
+          </div>
+          <p class="note">Senza scansione: misura la stanza con un metro e compila i tre campi qui sotto.</p>
+          <p class="note" id="scan-info" hidden></p>
+        </div>
+        <div class="panel">
+          <header><h2>Dimensioni</h2><span class="note" id="geo-out"></span></header>
+          <div class="fields">
+            <label>Lunghezza (m)<input type="number" id="in-L" data-k="L" min="1" max="100" step="0.05"></label>
+            <label>Larghezza (m)<input type="number" id="in-W" data-k="W" min="1" max="100" step="0.05"></label>
+            <label>Altezza (m)<input type="number" id="in-H" data-k="H" min="1.8" max="30" step="0.05"></label>
+          </div>
+          <h3>Superfici</h3>
+          <div class="fields one"><label>Finiture tipiche (compila le sei superfici, poi correggi dove serve)<select id="preset"><option value="">Scegli il tipo di ambiente…</option></select></label></div>
+          <div class="fields two" id="mats"></div>
+          <h3>Aperture e arredi</h3>
+          <div class="fields two">
+            <label>Vetrate (m²)<input type="number" id="in-windows" data-k="windows" min="0" step="0.5"></label>
+            <label>Porte (m²)<input type="number" id="in-doors" data-k="doors" min="0" step="0.5"></label>
+            <label>Persone presenti<input type="number" id="in-people" data-k="people" min="0" step="1"></label>
+            <label>Sedie imbottite<input type="number" id="in-chairs" data-k="chairs" min="0" step="1"></label>
+          </div>
+        </div>
+        <div class="panel">
+          <header><h2>Sorgente e microfono</h2></header>
+          <p class="note">Posizioni durante la misura, in metri dall'angolo in basso a sinistra della pianta (x lungo la lunghezza, y lungo la larghezza, z dal pavimento). Servono per attribuire ogni riflessione a una superficie.</p>
+          <div class="fields">
+            <label>Sorgente x<input type="number" id="in-sx" data-pos="src.0" min="0" step="0.1"></label>
+            <label>Sorgente y<input type="number" id="in-sy" data-pos="src.1" min="0" step="0.1"></label>
+            <label>Sorgente z<input type="number" id="in-sz" data-pos="src.2" min="0" step="0.1"></label>
+            <label>Microfono x<input type="number" id="in-mx" data-pos="mic.0" min="0" step="0.1"></label>
+            <label>Microfono y<input type="number" id="in-my" data-pos="mic.1" min="0" step="0.1"></label>
+            <label>Microfono z<input type="number" id="in-mz" data-pos="mic.2" min="0" step="0.1"></label>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <header><h2>Vista 3D</h2><span class="note">trascina per ruotare</span></header>
+          <canvas id="view3d" class="v3d" aria-label="Vista tridimensionale della stanza con scansione, sorgente e microfono"></canvas>
+          <p class="note" id="v3d-note"></p>
+        </div>
+        <div class="panel">
+          <header><h2>Pianta e prime riflessioni</h2><span class="note">vista dall'alto</span></header>
+          <div id="plan" class="chart"></div>
+          <div class="scroll"><table id="first-table"></table></div>
+        </div>
+        <div class="panel">
+          <header><h2>Riverbero previsto dai materiali</h2><span class="note">formula di Eyring</span></header>
+          <div class="scroll"><table id="model-table"></table></div>
+        </div>
+        <div class="panel">
+          <header><h2>Foto dell'ambiente</h2></header>
+          <p class="note">Documentano superfici e materiali e finiscono nel report.</p>
+          <input type="file" id="photo-file" accept="image/*" multiple>
+          <div class="photos" id="photos"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" id="s-meas" hidden>
+    <div class="panel">
+      <header><h2>Dove mettere microfono e sorgente</h2><button class="btn" id="btn-recpos">Usa le posizioni consigliate</button></header>
+      <div class="cols">
+        <div><div id="plan2" class="chart"></div></div>
+        <div>
+          <ul class="advice" id="mic-advice"></ul>
+          <div class="fields two">
+            <label>Microfono utilizzato<select id="mic-type"></select></label>
+            <label>Modello (facoltativo)<input type="text" id="mic-model" placeholder="es. iPhone 15 Pro"></label>
+          </div>
+          <p class="note" id="mic-note"></p>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <header><h2>Acquisizione</h2><span class="tag" id="meas-tag"></span></header>
+      <div class="btnrow">
+        <button class="btn primary" id="btn-sweep">Avvia la misura<small>Registra, emette i suoni di test, si ferma da sola e salva il file</small></button>
+        <button class="btn" id="btn-clap">Misura con impulso<small>Senza altoparlante: battito di mani o palloncino, 6 s</small></button>
+        <button class="btn primary" id="btn-play" hidden>Riproduci i suoni di test<small>Da registrare con un altro dispositivo o un'altra app</small></button>
+        <label class="btn filebtn" id="btn-file" for="audio-file">Carica audio o video<small>Registrazione dei suoni di test o di un impulso</small><input type="file" id="audio-file" accept="audio/*,video/*,.wav,.m4a,.mp3,.aac,.caf,.mp4,.mov,.webm,.ogg"></label>
+        <button class="btn" id="btn-demo">Simula dalla stanza<small>Risposta calcolata dalla geometria</small></button>
+      </div>
+      <div class="status" id="live-note" hidden>Questa pagina pubblicata non può usare il microfono. Per misurare da qui:
+        <ol class="advice"><li>Avvia la registrazione su un secondo dispositivo, oppure con Memo Vocali o la fotocamera, tenendolo nel punto del microfono.</li><li>Premi «Riproduci i suoni di test» e resta in silenzio fino alla fine.</li><li>Ferma la registrazione e caricala con «Carica audio o video»: lo sweep viene riconosciuto in automatico.</li></ol>
+      </div>
+      <p class="status" id="meas-status" hidden></p>
+      <div class="scroll" id="rec-wrap" hidden><table id="rec-table"></table></div>
+      <p class="note">Per lo sweep alza il volume e appoggia il dispositivo su un supporto. Gli altoparlanti di telefoni e tablet emettono poco sotto i 250 Hz: per le basse frequenze usa una cassa esterna oppure il metodo a impulso con un palloncino.</p>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div class="panel">
+      <header><h2>Riflessioni ed echi</h2>
+        <label style="flex-direction:row;align-items:center;gap:8px">Finestra<select id="etc-range" style="width:auto"><option value="60">60 ms</option><option value="200">200 ms</option><option value="500">500 ms</option></select></label>
+      </header>
+      <p class="note">Curva energia-tempo sopra 400 Hz, riferita al suono diretto. I numeri indicano le riflessioni che emergono dal decadimento.</p>
+      <div id="etc-chart" class="chart"></div>
+      <p class="status err" id="flutter" hidden></p>
+      <div class="scroll"><table id="refl-table"></table></div>
+    </div>
+    <div class="panel">
+      <header><h2>Decadimento</h2>
+        <label style="flex-direction:row;align-items:center;gap:8px">Banda<select id="decay-band" style="width:auto"></select></label>
+      </header>
+      <div id="decay-chart" class="chart"></div>
+      <div class="scroll"><table id="band-table"></table></div>
+    </div>
+  </section>
+
+  <section class="step" id="s-treat" hidden>
+    <div class="cols">
+      <div>
+        <div class="panel">
+          <header><h2>Obiettivo</h2></header>
+          <div class="fields one">
+            <label>Destinazione d'uso<select id="use"></select></label>
+            <label>Tempo di riverbero obiettivo a 500–1000 Hz (s)<input type="number" id="target" min="0.15" max="3" step="0.05"></label>
+          </div>
+          <p class="note" id="target-note"></p>
+        </div>
+        <div class="tiles" id="treat-tiles"></div>
+      </div>
+      <div>
+        <div class="panel">
+          <header><h2>Tempo di riverbero per banda</h2><span class="note" id="base-note"></span></header>
+          <div id="rt-chart" class="chart"></div>
+          <div class="scroll"><table id="rt-table"></table></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <header><h2>Dove installare i pannelli</h2><span class="note">sviluppo della stanza: pianta al centro, pareti ribaltate verso l'esterno</span></header>
+      <canvas id="view3d-b" class="v3d" aria-label="Vista tridimensionale della stanza con i pannelli"></canvas>
+      <div class="legend" id="layout-legend"></div>
+      <div id="layout" class="chart"></div>
+      <div class="scroll"><table id="layout-table"></table></div>
+      <ul class="advice" id="advice"></ul>
+    </div>
+    <div class="panel">
+      <header><h2>Materiali fonoassorbenti</h2><button class="btn primary" id="btn-propose">Proponi l'intervento</button></header>
+      <p class="note">Spunta i prodotti che vuoi impiegare: la proposta sceglie le superfici minime per rientrare nell'obiettivo al costo più basso. Puoi correggere a mano superfici e prezzi.</p>
+      <div class="scroll"><table id="prod-table"></table></div>
+      <p class="status err" id="cap-warn" hidden></p>
+    </div>
+  </section>
+
+  <section class="step" id="s-report" hidden>
+    <div class="panel">
+      <header><h2>Relazione acustica</h2><button class="btn primary noprint" id="btn-pdf">Scarica il PDF per il cliente</button></header>
+      <div class="fields two noprint">
+        <label>Cliente<input type="text" id="rep-client" placeholder="Nome del cliente"></label>
+        <label>Ambiente o progetto<input type="text" id="rep-project" placeholder="es. Sala riunioni, sede di Roma"></label>
+      </div>
+      <p class="status noprint" id="pdf-status" hidden></p>
+      <div id="report-body"></div>
+    </div>
+  </section>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+/* Motore acustico: nessuna dipendenza dal DOM, usabile anche da Node per i test. */
+const AC = {};
+AC.C = 343;
+AC.BANDS = [125, 250, 500, 1000, 2000, 4000];
+AC.PANEL_M2 = 0.72; // pannello standard 120 x 60 cm
+
+/* Coefficienti di assorbimento indicativi (125 Hz - 4 kHz), da tabelle di letteratura. */
+AC.MATERIALS = {
+  intonaco: { name: 'Intonaco / muratura verniciata', a: [0.02, 0.02, 0.03, 0.04, 0.05, 0.05] },
+  cemento: { name: 'Calcestruzzo a vista', a: [0.01, 0.01, 0.02, 0.02, 0.02, 0.03] },
+  cartongesso: { name: 'Cartongesso su intercapedine', a: [0.29, 0.10, 0.05, 0.04, 0.07, 0.09] },
+  vetro: { name: 'Vetrata', a: [0.35, 0.25, 0.18, 0.12, 0.07, 0.04] },
+  legno: { name: 'Rivestimento in legno', a: [0.28, 0.22, 0.17, 0.09, 0.10, 0.11] },
+  parquet: { name: 'Parquet', a: [0.04, 0.04, 0.07, 0.06, 0.06, 0.07] },
+  piastrelle: { name: 'Piastrelle / marmo / resina', a: [0.01, 0.01, 0.01, 0.02, 0.02, 0.02] },
+  linoleum: { name: 'Linoleum / PVC', a: [0.02, 0.03, 0.03, 0.03, 0.03, 0.02] },
+  moquette: { name: 'Moquette', a: [0.02, 0.06, 0.14, 0.37, 0.60, 0.65] },
+  controsoffitto: { name: 'Controsoffitto in fibra minerale', a: [0.40, 0.55, 0.65, 0.75, 0.80, 0.75] },
+  tenda: { name: 'Tendaggio pesante', a: [0.14, 0.35, 0.55, 0.72, 0.70, 0.65] },
+};
+AC.GLASS = [0.35, 0.25, 0.18, 0.12, 0.07, 0.04];
+AC.DOOR = [0.14, 0.10, 0.06, 0.08, 0.10, 0.10];
+AC.PERSON = [0.25, 0.35, 0.42, 0.46, 0.50, 0.50]; // m2 di assorbimento per persona seduta
+AC.CHAIR = [0.15, 0.25, 0.30, 0.35, 0.35, 0.35]; // m2 per sedia imbottita vuota
+AC.AIR_4M = [0, 0, 0, 0.004, 0.009, 0.024]; // 4m, 20 C / 50% UR
+
+AC.SURFACES = [
+  { id: 'floor', name: 'Pavimento', kind: 'floor' },
+  { id: 'ceiling', name: 'Soffitto', kind: 'ceiling' },
+  { id: 'front', name: 'Parete frontale', kind: 'wall' },
+  { id: 'back', name: 'Parete di fondo', kind: 'wall' },
+  { id: 'left', name: 'Parete sinistra', kind: 'wall' },
+  { id: 'right', name: 'Parete destra', kind: 'wall' },
+];
+
+/* Prodotti per il trattamento: valori tipici di scheda tecnica, prezzi indicativi modificabili. */
+AC.PRODUCTS = [
+  { id: 'pet50', name: 'Pannello in fibra di poliestere 50 mm', where: 'wall', a: [0.15, 0.45, 0.85, 0.95, 0.95, 0.95], price: 60 },
+  { id: 'rw50', name: 'Pannello in lana di roccia 50 mm rivestito in tessuto', where: 'wall', a: [0.20, 0.65, 0.95, 0.95, 0.95, 0.90], price: 75 },
+  { id: 'rw100', name: 'Pannello in lana di roccia 100 mm rivestito in tessuto', where: 'wall', a: [0.60, 0.95, 1.0, 1.0, 1.0, 0.95], price: 110 },
+  { id: 'mel50', name: 'Schiuma melamminica 50 mm', where: 'wall', a: [0.15, 0.35, 0.75, 0.95, 1.0, 1.0], price: 55 },
+  { id: 'wood', name: 'Legno microforato su lana minerale 50 mm', where: 'wall', a: [0.40, 0.80, 0.85, 0.70, 0.55, 0.45], price: 160 },
+  { id: 'trap', name: 'Bass trap angolare (m² di superficie frontale)', where: 'wall', a: [0.85, 0.95, 0.90, 0.85, 0.80, 0.75], price: 180 },
+  { id: 'curtain', name: 'Tenda acustica pesante pieghettata', where: 'wall', a: [0.15, 0.40, 0.65, 0.75, 0.70, 0.65], price: 45 },
+  { id: 'baffle', name: 'Isole / baffle sospesi 50 mm con intercapedine', where: 'ceiling', a: [0.45, 0.80, 1.0, 1.0, 1.0, 0.95], price: 120 },
+  { id: 'ceil', name: 'Controsoffitto fonoassorbente in fibra minerale', where: 'ceiling', a: [0.40, 0.55, 0.65, 0.75, 0.80, 0.75], price: 50 },
+  { id: 'carpet', name: 'Moquette spessa / tappeto', where: 'floor', a: [0.05, 0.10, 0.25, 0.45, 0.65, 0.70], price: 40 },
+];
+
+const lg = Math.log10;
+const clampV = (V) => Math.min(5000, Math.max(30, V));
+/* Tempi di riverbero di riferimento: DIN 18041 (gruppi A1-A3), EBU Tech 3276 per le regie. */
+AC.USES = [
+  { id: 'riunioni', name: 'Sala riunioni / aula', ref: 'DIN 18041 A3', t: (V) => 0.32 * lg(clampV(V)) - 0.17 },
+  { id: 'conferenze', name: 'Sala conferenze / parlato', ref: 'DIN 18041 A2', t: (V) => 0.37 * lg(clampV(V)) - 0.14 },
+  { id: 'musica', name: 'Sala musica / prove', ref: 'DIN 18041 A1', t: (V) => 0.45 * lg(clampV(V)) + 0.07 },
+  { id: 'ufficio', name: 'Ufficio / open space', ref: 'valore tipico', t: () => 0.55 },
+  { id: 'ristorante', name: 'Ristorante / bar', ref: 'valore tipico', t: () => 0.7 },
+  { id: 'regia', name: 'Regia / studio di registrazione', ref: 'EBU Tech 3276', t: (V) => Math.min(0.4, Math.max(0.2, 0.25 * Math.cbrt(V / 100))) },
+  { id: 'ascolto', name: 'Sala ascolto / home cinema', ref: 'valore tipico', t: (V) => Math.min(0.5, Math.max(0.25, 0.3 * Math.cbrt(V / 100))) },
+];
+AC.targetCurve = (tMid) => [1.2, 1.05, 1, 1, 1, 1].map((k) => k * tMid);
+
+/* ---------- Geometria della stanza (parallelepipedo: x lungo L, y lungo W, z in alto) ---------- */
+AC.geometry = function (room) {
+  const { L, W, H } = room;
+  const raw = { floor: L * W, ceiling: L * W, front: W * H, back: W * H, left: L * H, right: L * H };
+  const wallTot = 2 * (L + W) * H;
+  const openings = Math.min(wallTot * 0.9, (room.windows || 0) + (room.doors || 0));
+  const k = wallTot > 0 ? 1 - openings / wallTot : 1;
+  const area = { ...raw };
+  for (const id of ['front', 'back', 'left', 'right']) area[id] = raw[id] * k;
+  return { V: L * W * H, S: 2 * L * W + wallTot, area, wallNet: wallTot - openings };
+};
+
+AC.absorption = function (room) {
+  const g = AC.geometry(room);
+  const A = AC.BANDS.map((_, b) => {
+    let a = 0;
+    for (const s of AC.SURFACES) a += g.area[s.id] * AC.MATERIALS[room.mats[s.id]].a[b];
+    a += Math.min(room.windows || 0, g.S) * AC.GLASS[b] + (room.doors || 0) * AC.DOOR[b];
+    a += (room.people || 0) * AC.PERSON[b] + (room.chairs || 0) * AC.CHAIR[b];
+    return a;
+  });
+  return { ...g, A };
+};
+
+/* Riverbero previsto (Eyring, con assorbimento dell'aria). */
+AC.rtModel = function (room) {
+  const ab = AC.absorption(room);
+  return ab.A.map((A, b) => {
+    const am = Math.min(0.98, A / ab.S);
+    return (0.161 * ab.V) / (-ab.S * Math.log(1 - am) + AC.AIR_4M[b] * ab.V);
+  });
+};
+
+/* Sorgenti immagine (Allen-Berkley). Restituisce cammini con ritardo rispetto al suono diretto. */
+AC.imageSources = function (room, maxOrder, maxDelayMs) {
+  const { L, W, H, src, mic } = room;
+  const beta = {};
+  for (const s of AC.SURFACES) {
+    const a = AC.MATERIALS[room.mats[s.id]].a;
+    beta[s.id] = Math.sqrt(1 - Math.min(0.95, (a[2] + a[3] + a[4]) / 3));
+  }
+  const d0 = Math.hypot(src[0] - mic[0], src[1] - mic[1], src[2] - mic[2]) || 0.01;
+  const N = Math.ceil(maxOrder / 2) + 1;
+  const out = [];
+  for (let nx = -N; nx <= N; nx++) for (let px = 0; px <= 1; px++) {
+    const ox0 = Math.abs(nx - px), ox1 = Math.abs(nx);
+    for (let ny = -N; ny <= N; ny++) for (let py = 0; py <= 1; py++) {
+      const oy0 = Math.abs(ny - py), oy1 = Math.abs(ny);
+      for (let nz = -N; nz <= N; nz++) for (let pz = 0; pz <= 1; pz++) {
+        const oz0 = Math.abs(nz - pz), oz1 = Math.abs(nz);
+        const order = ox0 + ox1 + oy0 + oy1 + oz0 + oz1;
+        if (order === 0 || order > maxOrder) continue;
+        const img = [(1 - 2 * px) * src[0] + 2 * nx * L, (1 - 2 * py) * src[1] + 2 * ny * W, (1 - 2 * pz) * src[2] + 2 * nz * H];
+        const d = Math.hypot(img[0] - mic[0], img[1] - mic[1], img[2] - mic[2]);
+        const delay = ((d - d0) / AC.C) * 1000;
+        if (maxDelayMs && delay > maxDelayMs) continue;
+        const refl = beta.front ** ox0 * beta.back ** ox1 * beta.left ** oy0 * beta.right ** oy1 * beta.floor ** oz0 * beta.ceiling ** oz1;
+        const p = { order, d, delay, amp: refl / d, level: 20 * lg((refl * d0) / d) };
+        if (order === 1) {
+          p.surface = ox0 ? 'front' : ox1 ? 'back' : oy0 ? 'left' : oy1 ? 'right' : oz0 ? 'floor' : 'ceiling';
+          const axis = ox0 || ox1 ? 0 : oy0 || oy1 ? 1 : 2;
+          const plane = { front: 0, back: L, left: 0, right: W, floor: 0, ceiling: H }[p.surface];
+          const t = (plane - img[axis]) / (mic[axis] - img[axis]);
+          p.point = img.map((v, i) => v + t * (mic[i] - v));
+        }
+        out.push(p);
+      }
+    }
+  }
+  out.sort((a, b) => a.delay - b.delay);
+  return { d0, paths: out };
+};
+
+/* ---------- DSP ---------- */
+AC.nextPow2 = (n) => { let p = 1; while (p < n) p <<= 1; return p; };
+AC.fft = function (re, im, inverse) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = ((inverse ? 2 : -2) * Math.PI) / len;
+    const wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const a = i + k, b = a + len / 2;
+        const xr = re[b] * cr - im[b] * ci, xi = re[b] * ci + im[b] * cr;
+        re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi;
+        const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t;
+      }
+    }
+  }
+  if (inverse) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+};
+
+function spectrum(x, n) {
+  const re = new Float64Array(n), im = new Float64Array(n);
+  re.set(x.length > n ? x.subarray(0, n) : x);
+  AC.fft(re, im, false);
+  return { re, im };
+}
+
+/* Filtri d'ottava a fase zero applicati nel dominio della frequenza. */
+AC.octaveBands = function (x, fs) {
+  const n = AC.nextPow2(x.length);
+  const X = spectrum(x, n);
+  return AC.BANDS.map((fc) => {
+    const re = new Float64Array(n), im = new Float64Array(n);
+    for (let k = 1; k <= n / 2; k++) {
+      const f = (k * fs) / n;
+      const g = 1 / Math.sqrt(1 + Math.pow((f / fc - fc / f) / 0.7071, 8));
+      re[k] = X.re[k] * g; im[k] = X.im[k] * g;
+      if (k < n / 2) { re[n - k] = X.re[n - k] * g; im[n - k] = X.im[n - k] * g; }
+    }
+    AC.fft(re, im, true);
+    return re.subarray(0, x.length);
+  });
+};
+
+AC.highpass = function (x, fs, fc) {
+  const n = AC.nextPow2(x.length), X = spectrum(x, n);
+  X.re[0] = 0; X.im[0] = 0;
+  for (let k = 1; k <= n / 2; k++) {
+    const g = 1 / Math.sqrt(1 + Math.pow((fc * n) / (k * fs), 8));
+    X.re[k] *= g; X.im[k] *= g;
+    if (k < n / 2) { X.re[n - k] *= g; X.im[n - k] *= g; }
+  }
+  AC.fft(X.re, X.im, true);
+  return X.re.subarray(0, x.length);
+};
+
+AC.genSweep = function (fs, T, f1, f2) {
+  const n = Math.round(fs * T), x = new Float32Array(n), K = Math.log(f2 / f1);
+  const fade = Math.round(0.02 * fs);
+  for (let i = 0; i < n; i++) {
+    const t = i / fs;
+    let v = Math.sin(((2 * Math.PI * f1 * T) / K) * (Math.exp((t / T) * K) - 1));
+    if (i < fade) v *= 0.5 - 0.5 * Math.cos((Math.PI * i) / fade);
+    if (i > n - fade) v *= 0.5 - 0.5 * Math.cos((Math.PI * (n - i)) / fade);
+    x[i] = v * 0.8;
+  }
+  return x;
+};
+
+/* Deconvoluzione regolarizzata: risposta all'impulso = registrazione / sweep. */
+AC.deconvolve = function (rec, sweep) {
+  const n = AC.nextPow2(rec.length + sweep.length);
+  const Y = spectrum(rec, n), X = spectrum(sweep, n);
+  let mx = 0;
+  for (let k = 0; k < n; k++) mx = Math.max(mx, X.re[k] * X.re[k] + X.im[k] * X.im[k]);
+  const eps = mx * 1e-4;
+  for (let k = 0; k < n; k++) {
+    const d = X.re[k] * X.re[k] + X.im[k] * X.im[k] + eps;
+    const r = (Y.re[k] * X.re[k] + Y.im[k] * X.im[k]) / d;
+    const i = (Y.im[k] * X.re[k] - Y.re[k] * X.im[k]) / d;
+    Y.re[k] = r; Y.im[k] = i;
+  }
+  AC.fft(Y.re, Y.im, true);
+  return Y.re.subarray(0, rec.length);
+};
+
+AC.convolve = function (a, b) {
+  const n = AC.nextPow2(a.length + b.length);
+  const A = spectrum(a, n), B = spectrum(b, n);
+  for (let k = 0; k < n; k++) {
+    const r = A.re[k] * B.re[k] - A.im[k] * B.im[k];
+    A.im[k] = A.re[k] * B.im[k] + A.im[k] * B.re[k]; A.re[k] = r;
+  }
+  AC.fft(A.re, A.im, true);
+  return A.re.subarray(0, a.length + b.length);
+};
+
+function linfit(xs, ys) {
+  const n = xs.length; let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (let i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; sxx += xs[i] * xs[i]; sxy += xs[i] * ys[i]; }
+  const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx || 1e-12);
+  return { slope, icpt: (sy - slope * sx) / n };
+}
+
+/* Curva di decadimento di Schroeder con troncamento al rumore di fondo, RT (T30/T20/T10) ed EDT. */
+AC.decay = function (h, fs) {
+  const bl = Math.max(1, Math.round(0.002 * fs)), nb = Math.floor(h.length / bl);
+  const E = new Float64Array(nb);
+  for (let k = 0; k < nb; k++) { let s = 0; for (let i = k * bl; i < (k + 1) * bl; i++) s += h[i] * h[i]; E[k] = s / bl; }
+  const tail = Math.max(5, Math.floor(nb * 0.1));
+  let noise = 0; for (let k = nb - tail; k < nb; k++) noise += E[k]; noise = noise / tail + 1e-30;
+  let kmax = 0; for (let k = 1; k < nb; k++) if (E[k] > E[kmax]) kmax = k;
+  const inr = 10 * lg(E[kmax] / noise);
+  let tc = nb - tail;
+  const thr = noise * 3.16, w = 5;
+  for (let k = kmax + 1; k < nb - tail - w; k++) {
+    let m = 0; for (let j = 0; j < w; j++) m += E[k + j];
+    if (m / w < thr) { tc = k; break; }
+  }
+  const sch = new Float64Array(tc); let acc = 0;
+  for (let k = tc - 1; k >= 0; k--) { acc += E[k] - noise; sch[k] = Math.max(acc, 1e-30); }
+  const dB = Array.from(sch, (v) => 10 * lg(v / sch[0])), dt = bl / fs;
+  const fit = (hi, lo) => {
+    let a = dB.findIndex((v) => v <= hi), b = dB.findIndex((v) => v <= lo);
+    if (a < 0 || b < 0 || b - a < 3) return null;
+    const xs = [], ys = [];
+    for (let k = a; k <= b; k++) { xs.push(k * dt); ys.push(dB[k]); }
+    const s = linfit(xs, ys).slope;
+    return s < 0 ? -60 / s : null;
+  };
+  let rt = null, method = null;
+  if (inr >= 45) { rt = fit(-5, -35); method = 'T30'; }
+  if (rt == null && inr >= 35) { rt = fit(-5, -25); method = 'T20'; }
+  if (rt == null && inr >= 25) { rt = fit(-5, -15); method = 'T10'; }
+  if (rt == null) method = null;
+  const edt = inr >= 20 ? fit(0, -10) : null;
+  const step = Math.max(1, Math.floor(tc / 300)), curve = [];
+  for (let k = 0; k < tc; k += step) if (dB[k] > -70) curve.push([k * dt, dB[k]]);
+  return { rt, method, edt, inr, tc: tc * dt, curve };
+};
+
+/* Analisi completa di una risposta all'impulso (o di una registrazione impulsiva: battito, palloncino). */
+AC.analyze = function (x, fs) {
+  let pm = 0; for (let i = 1; i < x.length; i++) if (Math.abs(x[i]) > Math.abs(x[pm])) pm = i;
+  // suono diretto = primo arrivo entro 6 dB dal massimo (le riflessioni sovrapposte possono superarlo)
+  let p = Math.max(0, pm - Math.round(0.05 * fs)); while (Math.abs(x[p]) < 0.5 * Math.abs(x[pm])) p++;
+  const pre = Math.round(0.002 * fs), start = Math.max(0, p - pre);
+  const h = Float64Array.from(x.subarray(start, Math.min(x.length, start + Math.round(4 * fs))));
+  const i0 = p - start;
+  const broad = AC.decay(h, fs);
+  const filtered = AC.octaveBands(h, fs);
+  const bands = AC.BANDS.map((fc, b) => ({ fc, ...AC.decay(filtered[b], fs) }));
+
+  // Chiarezza e definizione (ISO 3382-1)
+  const tcI = Math.min(h.length, Math.round(broad.tc * fs));
+  const en = (a, b) => { let s = 0; for (let i = Math.max(0, a); i < Math.min(tcI, b); i++) s += h[i] * h[i]; return s; };
+  const e50 = en(0, i0 + 0.05 * fs), e80 = en(0, i0 + 0.08 * fs), eTot = en(0, tcI);
+  const c50 = 10 * lg(e50 / Math.max(eTot - e50, 1e-30)), c80 = 10 * lg(e80 / Math.max(eTot - e80, 1e-30)), d50 = e50 / eTot;
+
+  // Curva energia-tempo (ETC): finestra 1 ms, passo 0,25 ms
+  // Calcolata sopra 400 Hz: sotto, l'ondulazione della forma d'onda maschera le singole riflessioni.
+  const hf = AC.highpass(h, fs, 400);
+  const hop = Math.max(1, Math.round(0.00025 * fs)), w2 = Math.max(1, Math.round(0.00025 * fs));
+  const nS = Math.min(h.length, Math.round(0.62 * fs));
+  const box = (src) => {
+    const cs = new Float64Array(nS + 1), out = new Float64Array(nS);
+    for (let i = 0; i < nS; i++) cs[i + 1] = cs[i] + src[i];
+    for (let i = 0; i < nS; i++) out[i] = cs[Math.min(nS, i + w2 + 1)] - cs[Math.max(0, i - w2)];
+    return out;
+  };
+  const sq = new Float64Array(nS); for (let i = 0; i < nS; i++) sq[i] = hf[i] * hf[i];
+  const sm = box(box(sq)); // finestra triangolare di circa 1 ms
+  const nE = Math.floor((nS - 2 * w2) / hop);
+  const env = new Float64Array(nE); let emax = 0, kd = 0;
+  for (let k = 0; k < nE; k++) { env[k] = sm[k * hop]; if (k * hop <= i0 + 0.001 * fs && env[k] > emax) { emax = env[k]; kd = k; } }
+  const eDb0 = Array.from(env, (v) => 10 * lg(v / emax + 1e-12));
+  const eDb = eDb0.slice();
+  // dopo 30 ms la coda fluttua: si cerca su un inviluppo piu' liscio (circa 3 ms)
+  const late = kd + Math.round((0.03 * fs) / hop);
+  for (let k = late; k < nE - 6; k++) { let m = 0; for (let j = k - 6; j <= k + 6; j++) m += env[j]; eDb[k] = 10 * lg(m / 13 / emax + 1e-12); }
+  const ms = (k) => ((k - kd) * hop * 1000) / fs;
+  const etc = []; for (let k = Math.max(0, kd - 8); k < nE; k++) etc.push([ms(k), Math.max(-80, eDb0[k])]);
+
+  // Riflessioni: massimi locali che emergono di almeno 7 dB dal decadimento circostante
+  const noiseDb = -broad.inr, refl = [];
+  const r1 = Math.round(0.0006 * fs / hop), r5 = Math.round(0.005 * fs / hop);
+  for (let k = kd + Math.round(0.001 * fs / hop); k < nE - r5; k++) {
+    const v = eDb[k];
+    if (v < -40 || v < noiseDb + 10) continue;
+    let isMax = true;
+    for (let j = k - r1; j <= k + r1; j++) if (eDb[j] > v) { isMax = false; break; }
+    if (!isMax) continue;
+    const around = [];
+    for (let j = k - r5; j <= k + r5; j++) if (Math.abs(j - k) > r1 && j > kd + r1 / 2) around.push(eDb[j]);
+    if (around.length < 4) continue;
+    around.sort((a, b) => a - b);
+    const prom = v - around[Math.floor(around.length * 0.3)];
+    const t = ms(k);
+    if (prom >= (t < 20 ? 5 : t < 30 ? 7 : 8)) {
+      const kind = t >= 50 && v >= -20 ? 'eco' : t < 20 ? 'prima' : t < 50 ? 'precoce' : 'tardiva';
+      refl.push({ ms: t, dB: v, prom, extra: (t / 1000) * AC.C, kind });
+    }
+  }
+  refl.sort((a, b) => b.dB - a.dB);
+  const reflections = refl.slice(0, 12).sort((a, b) => a.ms - b.ms);
+
+  // Flutter echo: periodicita' nell'inviluppo, tolto l'andamento esponenziale
+  let flutter = null;
+  {
+    const st = Math.round(0.001 * fs / hop), a = kd + 20 * st, b = Math.min(nE, kd + Math.round(Math.min(0.5, broad.tc) * 1000) * st);
+    const ys = []; for (let k = a; k < b; k += st) ys.push(eDb[k]);
+    if (ys.length > 120) {
+      const xs = ys.map((_, i) => i), f = linfit(xs, ys);
+      const r0 = ys.map((v, i) => v - f.icpt - f.slope * i);
+      // toglie anche l'andamento lento (curvatura del decadimento) con una media mobile di 40 ms
+      const r = r0.map((v, i) => { let m = 0, c = 0; for (let j = Math.max(0, i - 20); j <= Math.min(r0.length - 1, i + 20); j++) { m += r0[j]; c++; } return v - m / c; });
+      let v0 = 0; for (const v of r) v0 += v * v;
+      const ac = (lag) => { let s = 0; for (let i = 0; i + lag < r.length; i++) s += r[i] * r[i + lag]; return s / v0; };
+      let best = 0, bl = 0;
+      for (let lag = 5; lag <= Math.min(80, Math.floor(r.length / 3)); lag++) { const c = ac(lag); if (c > best) { best = c; bl = lag; } }
+      if (best >= 0.4 && ac(2 * bl) >= 0.2 && ac(Math.round(bl / 2)) < best - 0.25) flutter = { periodMs: bl, strength: best, distance: (bl / 1000) * AC.C / 2 };
+    }
+  }
+
+  const mid = [bands[2].rt, bands[3].rt].filter((v) => v != null);
+  return {
+    fs, bands, broad, etc, reflections, flutter, c50, c80, d50,
+    rtMid: mid.length ? mid.reduce((a, b) => a + b) / mid.length : broad.rt,
+    edtMid: [bands[2].edt, bands[3].edt].filter((v) => v != null).reduce((a, b, _, arr) => a + b / arr.length, 0) || broad.edt,
+  };
+};
+
+/* Associa le riflessioni misurate alle superfici, confrontandole con le sorgenti immagine del primo ordine. */
+AC.matchReflections = function (reflections, room) {
+  const first = AC.imageSources(room, 1).paths;
+  return reflections.map((r) => {
+    let best = null;
+    for (const p of first) {
+      const err = Math.abs(p.delay - r.ms);
+      if (err <= 0.6 + 0.06 * r.ms && (!best || err < best.err)) best = { err, surface: p.surface };
+    }
+    return { ...r, surface: best ? best.surface : null };
+  });
+};
+
+function rng(seed) {
+  return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+/* Risposta all'impulso sintetica della stanza: sorgenti immagine + coda riverberante per bande. */
+AC.synthIR = function (room, fs, seed) {
+  const rt = AC.rtModel(room), rnd = rng(seed || 7);
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const dur = Math.min(3.5, Math.max(1.2, 1.8 * Math.max(...rt)));
+  const n = Math.round(dur * fs), lead = Math.round(0.02 * fs);
+  const h = new Float64Array(n);
+  const { d0, paths } = AC.imageSources(room, 4, 90);
+  const put = (delayMs, amp) => { const pos = lead + (delayMs / 1000) * fs, i = Math.floor(pos), f = pos - i; if (i + 1 < n) { h[i] += amp * (1 - f); h[i + 1] += amp * f; } };
+  put(0, 1 / d0);
+  for (const p of paths) put(p.delay, p.amp);
+  const white = new Float64Array(n); for (let i = 0; i < n; i++) white[i] = gauss();
+  const nb = AC.octaveBands(white, fs), tMix = lead + 0.015 * fs, tailAmp = Math.sqrt((4 * Math.PI * AC.C) / (room.L * room.W * room.H * fs));
+  for (let b = 0; b < nb.length; b++) {
+    let rms = 0; for (let i = 0; i < n; i++) rms += nb[b][i] * nb[b][i]; rms = Math.sqrt(rms / n);
+    const g = tailAmp / rms / Math.sqrt(nb.length), k = 6.908 / rt[b] / fs;
+    for (let i = Math.floor(tMix); i < n; i++) {
+      const fadeIn = Math.min(1, (i - tMix) / (0.03 * fs));
+      h[i] += nb[b][i] * g * fadeIn * Math.exp(-k * (i - tMix));
+    }
+  }
+  const floor = (1 / d0) * Math.pow(10, -68 / 20);
+  for (let i = 0; i < n; i++) h[i] += gauss() * floor;
+  return Float32Array.from(h);
+};
+
+/* ---------- Trattamento ---------- */
+AC.hostAlpha = function (room) {
+  const g = AC.geometry(room), wall = AC.BANDS.map(() => 0);
+  for (const id of ['front', 'back', 'left', 'right']) AC.MATERIALS[room.mats[id]].a.forEach((a, b) => { wall[b] += (a * g.area[id]) / (g.wallNet || 1); });
+  return { wall, ceiling: AC.MATERIALS[room.mats.ceiling].a, floor: AC.MATERIALS[room.mats.floor].a };
+};
+AC.capacity = function (room) {
+  const g = AC.geometry(room);
+  return { wall: 0.4 * g.wallNet, ceiling: 0.7 * g.area.ceiling, floor: 0.5 * g.area.floor };
+};
+AC.gainPerM2 = (prod, host) => prod.a.map((a, b) => Math.max(0, a - host[prod.where][b]));
+
+/* Riverbero dopo il trattamento, a partire dal riverbero attuale (misurato o da modello). */
+AC.rtAfter = function (room, tCur, areas) {
+  const V = AC.geometry(room).V, host = AC.hostAlpha(room);
+  return tCur.map((T, b) => {
+    let A = (0.161 * V) / T;
+    for (const p of AC.PRODUCTS) A += (areas[p.id] || 0) * AC.gainPerM2(p, host)[b];
+    return (0.161 * V) / A;
+  });
+};
+
+/* Proposta automatica: aggiunge un pannello alla volta scegliendo quello che riduce di piu' lo scarto per euro. */
+AC.propose = function (room, tCur, tTar, enabled, prices) {
+  const price = (areas) => AC.PRODUCTS.reduce((s, p) => s + (areas[p.id] || 0) * (prices[p.id] || p.price), 0);
+  const miss = (areas) => AC.rtAfter(room, tCur, areas).reduce((s, T, b) => s + Math.max(0, T / tTar[b] - 1.1), 0);
+  const c = [AC._propose(room, tCur, tTar, enabled, prices, true), AC._propose(room, tCur, tTar, enabled, prices, false)];
+  // se la superficie disponibile non basta scegliendo per costo, conta la resa per metro quadro
+  return miss(c[0]) - miss(c[1]) > 0.02 ? c[1] : miss(c[1]) - miss(c[0]) > 0.02 ? c[0] : price(c[0]) <= price(c[1]) ? c[0] : c[1];
+};
+AC._propose = function (room, tCur, tTar, enabled, prices, perEuro) {
+  const V = AC.geometry(room).V, host = AC.hostAlpha(room), cap = AC.capacity(room);
+  const need = tCur.map((T, b) => 0.161 * V * (1 / tTar[b] - 1 / T));
+  const maxG = tCur.map((T, b) => 0.161 * V * (1 / (0.85 * tTar[b]) - 1 / T));
+  const prods = AC.PRODUCTS.filter((p) => enabled[p.id]).map((p) => ({ p, g: AC.gainPerM2(p, host), price: prices[p.id] || p.price }));
+  const areas = {}, gain = need.map(() => 0), used = { wall: 0, ceiling: 0, floor: 0 };
+  const err = (g) => g.reduce((s, v, b) => s + Math.max(0, need[b] - v) ** 2 + 2 * Math.max(0, v - Math.max(maxG[b], 0)) ** 2, 0);
+  const step = AC.PANEL_M2 * Math.max(1, Math.round(Math.max(...need, 0) / 60 / AC.PANEL_M2));
+  for (let it = 0; it < 600; it++) {
+    const after = tCur.map((T, b) => (0.161 * V) / ((0.161 * V) / T + gain[b]));
+    if (after.every((T, b) => T <= tTar[b] * 1.08)) break;
+    const e0 = err(gain); let best = null;
+    for (const q of prods) {
+      if (used[q.p.where] + step > cap[q.p.where]) continue;
+      const e1 = err(gain.map((v, b) => v + q.g[b] * step)), score = (e0 - e1) / ((perEuro ? q.price : 1) * step);
+      if (score > 1e-9 && (!best || score > best.score)) best = { q, score };
+    }
+    if (!best) break;
+    areas[best.q.p.id] = (areas[best.q.p.id] || 0) + step;
+    used[best.q.p.where] += step;
+    best.q.g.forEach((v, b) => { gain[b] += v * step; });
+  }
+  for (const k in areas) areas[k] = Math.round(areas[k] * 100) / 100;
+  return areas;
+};
+
+/* ---------- Import scansione 3D (OBJ, metri) ---------- */
+AC.parseOBJ = function (text, upAxis) {
+  const vs = [], faces = [];
+  for (const line of text.split('\n')) {
+    if (line.charCodeAt(0) === 118 && line.charCodeAt(1) === 32) {
+      const p = line.trim().split(/\s+/); vs.push([+p[1], +p[2], +p[3]]);
+    } else if (line.charCodeAt(0) === 102 && line.charCodeAt(1) === 32) {
+      const p = line.trim().split(/\s+/).slice(1).map((s) => parseInt(s, 10));
+      for (let i = 1; i + 1 < p.length; i++) faces.push([p[0], p[i], p[i + 1]]);
+    }
+  }
+  if (vs.length < 8) throw new Error('Il file non contiene una mesh valida.');
+  const up = upAxis === 'z' ? 2 : 1, h1 = up === 2 ? 0 : 0, h2 = up === 2 ? 1 : 2;
+  const zs = vs.map((v) => v[up]).sort((a, b) => a - b);
+  const q = (arr, f) => arr[Math.min(arr.length - 1, Math.max(0, Math.round(f * (arr.length - 1))))];
+  const z0 = q(zs, 0.005), H = q(zs, 0.995) - z0;
+  // rettangolo di area minima sulla pianta
+  const stepN = Math.max(1, Math.floor(vs.length / 20000)), pts = [];
+  for (let i = 0; i < vs.length; i += stepN) pts.push([vs[i][h1], vs[i][h2]]);
+  let best = null;
+  for (let deg = 0; deg < 90; deg++) {
+    const c = Math.cos((deg * Math.PI) / 180), s = Math.sin((deg * Math.PI) / 180);
+    const us = pts.map((p) => p[0] * c + p[1] * s).sort((a, b) => a - b), ws = pts.map((p) => -p[0] * s + p[1] * c).sort((a, b) => a - b);
+    const u0 = q(us, 0.005), u1 = q(us, 0.995), w0 = q(ws, 0.005), w1 = q(ws, 0.995), area = (u1 - u0) * (w1 - w0);
+    if (!best || area < best.area) best = { area, c, s, u0, w0, du: u1 - u0, dw: w1 - w0 };
+  }
+  const swap = best.dw > best.du;
+  const plan = pts.filter((_, i) => i % Math.max(1, Math.floor(pts.length / 2500)) === 0).map((p) => {
+    const u = p[0] * best.c + p[1] * best.s - best.u0, w = -p[0] * best.s + p[1] * best.c - best.w0;
+    return swap ? [w, u] : [u, w];
+  });
+  const cStep = Math.max(1, Math.floor(vs.length / 7000)), cloud = [];
+  for (let i = 0; i < vs.length; i += cStep) {
+    const u = vs[i][h1] * best.c + vs[i][h2] * best.s - best.u0, w = -vs[i][h1] * best.s + vs[i][h2] * best.c - best.w0;
+    cloud.push(swap ? [w, u, vs[i][up] - z0] : [u, w, vs[i][up] - z0]);
+  }
+  let vol = 0;
+  for (const f of faces) {
+    const a = vs[(f[0] < 0 ? vs.length + f[0] : f[0] - 1)], b = vs[(f[1] < 0 ? vs.length + f[1] : f[1] - 1)], c = vs[(f[2] < 0 ? vs.length + f[2] : f[2] - 1)];
+    if (!a || !b || !c) continue;
+    vol += (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6;
+  }
+  const r2 = (v) => Math.round(v * 100) / 100;
+  return { L: r2(Math.max(best.du, best.dw)), W: r2(Math.min(best.du, best.dw)), H: r2(H), vertices: vs.length, faces: faces.length, meshVolume: Math.abs(vol), plan, cloud };
+};
+
+/* ---------- Posizioni consigliate per la misura (criteri ISO 3382-2) ---------- */
+AC.recommendPositions = function (room) {
+  const { L, W, H } = room, cl = (v, d) => { const m = Math.min(1, d / 3); return Math.round(Math.min(d - m, Math.max(m, v)) * 20) / 20; };
+  return { src: [cl(0.18 * L, L), cl(0.42 * W, W), Math.min(1.5, H - 0.5)], mic: [cl(0.64 * L, L), cl(0.6 * W, W), 1.2] };
+};
+AC.minDistance = (room, T) => 2 * Math.sqrt((room.L * room.W * room.H) / (AC.C * Math.max(0.1, T)));
+
+/* ---------- Disposizione dei pannelli sulle superfici ---------- */
+AC.layout = function (room, areas) {
+  const { L, W, H } = room, rp = {}, rects = [], notes = [], PA = AC.PANEL_M2;
+  for (const p of AC.imageSources(room, 1).paths) rp[p.surface] = p.point;
+  const num = (v) => v.toFixed(2).replace('.', ',');
+  // bass trap negli angoli, a tutta altezza
+  const nTrap = Math.min(4, Math.ceil((areas.trap || 0) / (0.6 * H) - 1e-6));
+  const corners = [['front', 'left'], ['front', 'right'], ['back', 'left'], ['back', 'right']].slice(0, nTrap);
+  for (const [a, b] of corners) {
+    rects.push({ face: a, u: b === 'left' ? 0 : W - 0.4, v: 0, w: 0.4, h: H, type: 'trap' });
+    rects.push({ face: b, u: a === 'front' ? 0 : L - 0.4, v: 0, w: 0.4, h: H, type: 'trap' });
+  }
+  if (nTrap) notes.push({ face: 'Angoli', text: `${nTrap} bass trap da pavimento a soffitto: ` + corners.map(([a, b]) => (a === 'front' ? 'frontale' : 'di fondo') + '-' + (b === 'left' ? 'sinistro' : 'destro')).join(', ') + '.' });
+  // tenda sulla parete di fondo
+  let curtainW = 0;
+  if (areas.curtain > 0) {
+    curtainW = Math.min(W - 1, areas.curtain / (H - 0.2));
+    rects.push({ face: 'back', u: (W - curtainW) / 2, v: 0.1, w: curtainW, h: H - 0.2, type: 'curtain' });
+    notes.push({ face: 'Parete di fondo', text: `tenda larga ${num(curtainW)} m a tutta altezza, centrata.` });
+  }
+  // pannelli a parete 60 x 120 cm
+  const wallA = AC.PRODUCTS.filter((p) => p.where === 'wall' && p.id !== 'trap' && p.id !== 'curtain').reduce((s, p) => s + (areas[p.id] || 0), 0);
+  let n = Math.ceil(wallA / PA - 1e-6);
+  const m = 0.6, rows = H >= 2.8 ? 2 : 1;
+  const walls = [['left', L], ['right', L], ['front', W], ['back', W]].filter((w) => !(w[0] === 'back' && curtainW > 0))
+    .map(([id, len]) => ({ id, len, cap: rows * Math.max(0, Math.floor((len - 2 * m) / 0.7)), k: 0 }));
+  while (n > 0) {
+    const c = walls.filter((w) => w.k < w.cap).sort((a, b) => a.k / a.len - b.k / b.len)[0];
+    if (!c) break;
+    c.k++; n--;
+  }
+  for (const w of walls) {
+    if (!w.k) continue;
+    const used = w.k > w.cap / rows ? 2 : 1, per = [Math.ceil(w.k / used), Math.floor(w.k / used)], bottoms = used === 1 ? [0.9] : [0.3, 1.55];
+    const ru = rp[w.id][w.id === 'left' || w.id === 'right' ? 0 : 1], span = w.len - 2 * m; let list = [], snapped = false;
+    for (let r = 0; r < used; r++) {
+      const c = per[r]; let cs = [];
+      for (let i = 0; i < c; i++) cs.push(m + ((i + 0.5) * span) / c);
+      if (r) cs = list.slice(0, c);
+      else if (c && span / c >= 0.9) { let b = 0; cs.forEach((v, i) => { if (Math.abs(v - ru) < Math.abs(cs[b] - ru)) b = i; }); if (Math.abs(cs[b] - ru) < span / c / 2) snapped = true; if (snapped) cs[b] = Math.min(w.len - 0.35, Math.max(0.35, ru)); }
+      for (const u of cs) rects.push({ face: w.id, u: u - 0.3, v: bottoms[r], w: 0.6, h: 1.2, type: 'panel' });
+      if (!r) list = cs;
+    }
+    const name = AC.SURFACES.find((s) => s.id === w.id).name, ref = w.id === 'left' || w.id === 'right' ? 'dalla parete frontale' : 'dalla parete sinistra';
+    notes.push({ face: name, text: `${w.k} pannelli 60 × 120 cm in ${used === 1 ? 'una fila, bordo inferiore a 0,90 m da terra' : 'due file, bordi inferiori a 0,30 e 1,55 m da terra'}; centri a ${list.map(num).join(' · ')} m ${ref}` + (used === 2 ? ', seconda fila allineata alla prima' : '') + '.' + (snapped ? ' Un pannello è centrato sul punto di prima riflessione.' : '') });
+  }
+  if (n > 0) notes.push({ face: 'Pareti', text: `${n} pannelli non trovano posto con questa disposizione: valuta il soffitto o pannelli più spessi.` });
+  // soffitto 120 x 60 cm
+  const nc = Math.ceil(((areas.baffle || 0) + (areas.ceil || 0)) / PA - 1e-6);
+  if (nc > 0) {
+    const cols = Math.max(1, Math.min(Math.floor(L / 1.3), Math.ceil(Math.sqrt((nc * L) / W / 2)))), rws = Math.ceil(nc / cols);
+    for (let i = 0; i < nc; i++) rects.push({ face: 'ceiling', u: ((i % cols) + 0.5) * (L / cols) - 0.6, v: (Math.floor(i / cols) + 0.5) * (W / rws) - 0.3, w: 1.2, h: 0.6, type: 'ceil' });
+    notes.push({ face: 'Soffitto', text: `${nc} pannelli 120 × 60 cm in griglia ${cols} × ${rws}, interasse ${num(L / cols)} m in lunghezza e ${num(W / rws)} m in larghezza.` });
+  }
+  if (areas.carpet > 0) {
+    const cw = Math.min(L - 0.5, Math.sqrt((areas.carpet * L) / W)), ch = Math.min(W - 0.5, areas.carpet / cw);
+    const cx = Math.min(L - cw / 2, Math.max(cw / 2, (room.src[0] + room.mic[0]) / 2)), cy = Math.min(W - ch / 2, Math.max(ch / 2, (room.src[1] + room.mic[1]) / 2));
+    rects.push({ face: 'floor', u: cx - cw / 2, v: cy - ch / 2, w: cw, h: ch, type: 'carpet' });
+    notes.push({ face: 'Pavimento', text: `tappeto di ${num(cw)} × ${num(ch)} m tra sorgente e ascoltatore.` });
+  }
+  const dots = Object.keys(rp).filter((k) => k !== 'floor').map((k) => ({ face: k, u: rp[k][k === 'front' || k === 'back' ? 1 : 0], v: rp[k][k === 'ceiling' ? 1 : 2] }));
+  return { rects, notes, dots };
+};
+/* Sviluppo della stanza: pianta al centro, pareti ribaltate verso l'esterno. Coordinate in metri. */
+AC.unfold = function (room, r) {
+  const { L, W, H } = room, w = r.w || 0, h = r.h || 0;
+  switch (r.face) {
+    case 'left': return [H + r.u, H + W + r.v, w, h];
+    case 'right': return [H + r.u, H - r.v - h, w, h];
+    case 'front': return [H - r.v - h, H + (W - r.u - w), h, w];
+    case 'back': return [H + L + r.v, H + (W - r.u - w), h, w];
+    default: return [H + r.u, H + (W - r.v - h), w, h];
+  }
+};
+
+AC.MICS = [
+  { id: 'iphone', name: 'iPhone (microfono integrato)', note: 'Adatto a riverbero e riflessioni da 250 Hz in su. Usa il microfono inferiore, senza custodia che lo copra.' },
+  { id: 'ipad', name: 'iPad (microfono integrato)', note: 'Adatto a riverbero e riflessioni da 250 Hz in su. Appoggialo su un supporto, non tenerlo in mano.' },
+  { id: 'mac', name: 'MacBook / iMac (microfoni integrati)', note: 'I microfoni a schiera sono direzionali e filtrati: buoni per il riverbero alle medie frequenze, meno per le singole riflessioni.' },
+  { id: 'android', name: 'Smartphone Android (microfono integrato)', note: 'La risposta cambia molto da modello a modello e alcuni applicano sempre riduzione del rumore: verifica la dinamica della misura.' },
+  { id: 'tabletandroid', name: 'Tablet Android (microfono integrato)', note: 'Come per gli smartphone Android: controlla che la dinamica superi 35 dB in ogni banda.' },
+  { id: 'pc', name: 'Portatile Windows (microfono integrato)', note: 'Spesso con soppressione del rumore attiva dal driver: disattivala nelle impostazioni audio prima di misurare.' },
+  { id: 'usbmeas', name: 'Microfono di misura USB (es. miniDSP UMIK-1)', note: 'Scelta consigliata: omnidirezionale e con risposta piatta, misura affidabile su tutte le bande.' },
+  { id: 'xlrmeas', name: 'Microfono di misura XLR con scheda audio', note: 'Scelta consigliata: omnidirezionale e con risposta piatta. Disattiva compressori e filtri sulla scheda.' },
+  { id: 'ext', name: 'Microfono esterno generico (lavalier, USB, da studio)', note: 'Se è cardioide puntalo verso il soffitto: la direttività attenua le riflessioni che arrivano da dietro.' },
+  { id: 'other', name: 'Altro', note: 'Indica il modello: verrà riportato nella relazione.' },
+];
+
+/* ---------- Registrazioni ---------- */
+AC.testSweep = (fs) => AC.genSweep(fs, 4, 60, Math.min(16000, fs * 0.45));
+AC.encodeWav = function (x, fs) {
+  const buf = new ArrayBuffer(44 + x.length * 2), v = new DataView(buf), str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + x.length * 2, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, fs, true); v.setUint32(28, fs * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, x.length * 2, true);
+  for (let i = 0; i < x.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x[i])) * 32767, true);
+  return buf;
+};
+/* Da una registrazione qualsiasi ricava la risposta all'impulso: riconosce se contiene lo sweep di test o un impulso. */
+AC.autoIR = function (x, fs) {
+  const crest = (a) => { let mx = 0, e = 0; for (let i = 0; i < a.length; i++) { const q = a[i] * a[i]; e += q; if (q > mx) mx = q; } return mx / (e / a.length + 1e-30); };
+  if (x.length > 30 * fs) return { ir: x, kind: 'impulse' };
+  const d = AC.deconvolve(x, AC.testSweep(fs));
+  return crest(d) > crest(x) ? { ir: Float32Array.from(d), kind: 'sweep' } : { ir: x, kind: 'impulse' };
+};
+AC.PRESETS = [
+  { id: 'casa', name: 'Stanza domestica', mats: { floor: 'parquet', ceiling: 'intonaco', front: 'intonaco', back: 'intonaco', left: 'intonaco', right: 'intonaco' } },
+  { id: 'ufficio', name: 'Ufficio con controsoffitto', mats: { floor: 'linoleum', ceiling: 'controsoffitto', front: 'cartongesso', back: 'cartongesso', left: 'cartongesso', right: 'vetro' } },
+  { id: 'aula', name: 'Aula / sala riunioni', mats: { floor: 'linoleum', ceiling: 'intonaco', front: 'intonaco', back: 'intonaco', left: 'intonaco', right: 'intonaco' } },
+  { id: 'ristorante', name: 'Ristorante / locale con piastrelle', mats: { floor: 'piastrelle', ceiling: 'intonaco', front: 'intonaco', back: 'intonaco', left: 'intonaco', right: 'vetro' } },
+  { id: 'industriale', name: 'Capannone / spazio in cemento', mats: { floor: 'cemento', ceiling: 'cemento', front: 'cemento', back: 'cemento', left: 'cemento', right: 'cemento' } },
+  { id: 'studio', name: 'Sala con moquette e tende', mats: { floor: 'moquette', ceiling: 'intonaco', front: 'intonaco', back: 'tenda', left: 'intonaco', right: 'intonaco' } },
+];
+
+if (typeof module !== 'undefined') module.exports = AC;
+
+(function () {
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const f = (v, d) => (v == null || !isFinite(v) ? 'n.d.' : v.toFixed(d == null ? 2 : d).replace('.', ','));
+  const bandLabel = (fc) => (fc >= 1000 ? fc / 1000 + ' kHz' : fc + ' Hz');
+  const surfName = (id) => (AC.SURFACES.find((s) => s.id === id) || { name: '—' }).name;
+  const SIGN_NAME = 'Massimiliano Mascioli Trippa', SIGN_ORG = 'Studio M';
+  const WHERE = { wall: 'parete', ceiling: 'soffitto', floor: 'pavimento' };
+  const KIND = { prima: ['Prima riflessione', 'warn'], precoce: ['Riflessione precoce', ''], tardiva: ['Riflessione tardiva', ''], eco: ['Eco percepibile', 'crit'] };
+
+  const state = {
+    room: {
+      L: 6, W: 4.5, H: 2.8, windows: 6, doors: 2, people: 0, chairs: 10,
+      mats: { floor: 'parquet', ceiling: 'intonaco', front: 'intonaco', back: 'intonaco', left: 'intonaco', right: 'intonaco' },
+      src: [1.2, 2.0, 1.4], mic: [4.2, 2.7, 1.2],
+    },
+    use: 'riunioni', target: null, scan: null, meas: null, photos: [],
+    treat: { areas: {}, enabled: Object.fromEntries(AC.PRODUCTS.map((p) => [p.id, !['mel50', 'curtain', 'carpet', 'ceil'].includes(p.id)])), prices: {} },
+    etcRange: 60, decayBand: 3, mic: { type: 'iphone', model: '' }, client: '', project: '', touched: {}, view: { yaw: -0.6, pitch: 0.5 },
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem('rilievo-acustico.v1') || 'null');
+    if (saved && saved.room && saved.room.mats) { Object.assign(state.room, saved.room); state.use = saved.use || state.use; state.target = saved.target || null; Object.assign(state.treat, saved.treat || {}); Object.assign(state.mic, saved.mic || {}); state.client = saved.client || ''; state.touched = saved.touched || {}; state.project = saved.project || ''; }
+  } catch (e) { /* archivio non disponibile */ }
+  const save = () => { try { localStorage.setItem('rilievo-acustico.v1', JSON.stringify({ room: state.room, use: state.use, target: state.target, treat: state.treat, mic: state.mic, client: state.client, project: state.project, touched: state.touched })); } catch (e) { /* idem */ } };
+
+  /* ---------- Grafico a linee con tooltip ---------- */
+  let chartId = 0;
+  function drawChart(el, o) {
+    const W = Math.max(280, el.clientWidth || 640), H = o.h || 260, m = { l: 46, r: 14, t: 26, b: 40 };
+    const X = (v) => m.l + ((v - o.x.min) / (o.x.max - o.x.min)) * (W - m.l - m.r);
+    const Y = (v) => m.t + ((o.y.max - v) / (o.y.max - o.y.min)) * (H - m.t - m.b);
+    const id = 'clip' + ++chartId;
+    let s = '';
+    if (o.series.length > 1 || o.area) {
+      s += '<div class="legend">' + o.series.map((q) => `<span><i style="background:var(${q.color})"></i>${esc(q.name)}</span>`).join('') +
+        (o.area ? `<span><i class="band" style="background:var(${o.area.color})"></i>${esc(o.area.name)}</span>` : '') + '</div>';
+    }
+    s += `<svg width="${W}" height="${H}" role="img" aria-label="${esc(o.label)}"><defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}"/></clipPath></defs>`;
+    for (const t of o.y.ticks) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${m.l - 6}" y="${Y(t) + 4}" text-anchor="end">${String(t).replace('.', ',')}</text>`;
+    for (const t of o.x.ticks) s += `<text x="${X(t.v)}" y="${H - m.b + 16}" text-anchor="middle">${esc(t.l)}</text>`;
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" stroke="var(--line-strong)" stroke-width="1"/>`;
+    s += `<text x="${(m.l + W - m.r) / 2}" y="${H - 6}" text-anchor="middle">${esc(o.x.title)}</text><text x="12" y="11">${esc(o.y.title)}</text>`;
+    s += `<g clip-path="url(#${id})">`;
+    if (o.area) s += `<polygon fill="var(${o.area.color})" fill-opacity="0.16" points="${o.area.hi.map((p) => X(p[0]) + ',' + Y(p[1])).join(' ')} ${o.area.lo.slice().reverse().map((p) => X(p[0]) + ',' + Y(p[1])).join(' ')}"/>`;
+    for (const q of o.series) {
+      s += `<path fill="none" stroke="var(${q.color})" stroke-width="2" stroke-linejoin="round" ${q.dash ? 'stroke-dasharray="6 4"' : ''} d="${q.pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('')}"/>`;
+      if (q.dots) for (const p of q.pts) s += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="4" fill="var(${q.color})" stroke="var(--panel)" stroke-width="2"/>`;
+    }
+    s += '</g>';
+    for (const k of o.marks || []) {
+      if (k.x > o.x.max) continue;
+      const cy = Math.max(m.t + 14, Y(k.y));
+      s += `<circle cx="${X(k.x)}" cy="${cy}" r="4.5" fill="var(${k.color})" stroke="var(--panel)" stroke-width="2"/><text class="ink" x="${X(k.x)}" y="${cy - 9}" text-anchor="middle">${esc(k.label)}</text>`;
+    }
+    s += `<line class="cross" y1="${m.t}" y2="${H - m.b}" stroke="var(--line-strong)" stroke-width="1" visibility="hidden"/></svg><div class="tip" hidden></div>`;
+    el.innerHTML = s; el._opts = o;
+    const svg = $('svg', el), cross = $('.cross', el), tip = $('.tip', el);
+    const move = (ev) => {
+      const r = svg.getBoundingClientRect(), px = ev.clientX - r.left;
+      if (px < m.l || px > W - m.r) return leave();
+      const xv = o.x.min + ((px - m.l) / (W - m.l - m.r)) * (o.x.max - o.x.min);
+      let rows = '', xs = null;
+      for (const q of o.series) {
+        let best = q.pts[0];
+        for (const p of q.pts) if (Math.abs(p[0] - xv) < Math.abs(best[0] - xv)) best = p;
+        if (xs == null) xs = best[0];
+        rows += `<div><i style="background:var(${q.color})"></i>${esc(q.name)}: ${f(best[1], o.dec == null ? 1 : o.dec)} ${o.unit}</div>`;
+      }
+      cross.setAttribute('x1', X(xs)); cross.setAttribute('x2', X(xs)); cross.setAttribute('visibility', 'visible');
+      tip.innerHTML = `<b>${esc(o.x.fmt(xs))}</b>${rows}`; tip.hidden = false;
+      const tw = tip.offsetWidth, left = X(xs) + 12 + tw > W ? X(xs) - 12 - tw : X(xs) + 12;
+      tip.style.left = Math.max(0, left) + 'px'; tip.style.top = svg.offsetTop + m.t + 'px';
+    };
+    const leave = () => { cross.setAttribute('visibility', 'hidden'); tip.hidden = true; };
+    svg.addEventListener('pointermove', move); svg.addEventListener('pointerdown', move); svg.addEventListener('pointerleave', leave);
+  }
+
+  /* ---------- Dati derivati ---------- */
+  const model = () => AC.rtModel(state.room);
+  const geo = () => AC.geometry(state.room);
+  const targetMid = () => state.target || Math.max(0.2, AC.USES.find((u) => u.id === state.use).t(geo().V));
+  function current() {
+    const mdl = model(), fromMeas = [];
+    const t = mdl.map((v, b) => {
+      const r = state.meas && state.meas.res.bands[b].rt;
+      fromMeas.push(!!r);
+      return r || v;
+    });
+    return { t, fromMeas };
+  }
+  const mid = (arr) => (arr[2] + arr[3]) / 2;
+
+  function drawPlan(el, dims) {
+    const r = state.room, W = Math.max(280, el.clientWidth || 600), pad = 34;
+    const sc = Math.min((W - 2 * pad) / r.L, 320 / r.W), w = r.L * sc, h = r.W * sc, ox = (W - w) / 2, oy = pad;
+    const P = (x, y) => [ox + x * sc, oy + h - y * sc];
+    let s = `<svg width="${W}" height="${h + 2 * pad}" role="img" aria-label="Pianta della stanza con sorgente, microfono e prime riflessioni sulle pareti">`;
+    s += `<rect x="${ox}" y="${oy}" width="${w}" height="${h}" fill="var(--bg)" stroke="var(--ink-2)" stroke-width="2"/>`;
+    if (state.scan) for (const p of state.scan.plan) { const q = P(p[0], p[1]); s += `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="1" fill="var(--muted)"/>`; }
+    const first = AC.imageSources(r, 1).paths, S = P(r.src[0], r.src[1]), M = P(r.mic[0], r.mic[1]);
+    for (const p of first) {
+      if (p.surface === 'floor' || p.surface === 'ceiling') continue;
+      const q = P(p.point[0], p.point[1]);
+      s += `<polyline fill="none" stroke="var(--s2)" stroke-width="1.5" stroke-dasharray="5 4" points="${S} ${q} ${M}"/><circle cx="${q[0]}" cy="${q[1]}" r="4" fill="var(--s2)" stroke="var(--panel)" stroke-width="2"/>`;
+    }
+    s += `<line x1="${S[0]}" y1="${S[1]}" x2="${M[0]}" y2="${M[1]}" stroke="var(--s1)" stroke-width="2"/>`;
+    s += `<circle cx="${S[0]}" cy="${S[1]}" r="7" fill="var(--s1)" stroke="var(--panel)" stroke-width="2"/><text class="ink" x="${S[0]}" y="${S[1] - 12}" text-anchor="middle">Sorgente</text>`;
+    s += `<rect x="${M[0] - 6}" y="${M[1] - 6}" width="12" height="12" fill="var(--ink)" stroke="var(--panel)" stroke-width="2"/><text class="ink" x="${M[0]}" y="${M[1] - 12}" text-anchor="middle">Microfono</text>`;
+    s += `<text x="${ox + w / 2}" y="${oy + h + 16}" text-anchor="middle">Parete sinistra · ${f(r.L)} m</text><text x="${ox + w / 2}" y="${oy - 8}" text-anchor="middle">Parete destra</text>`;
+    s += `<text transform="translate(${ox - 8},${oy + h / 2}) rotate(-90)" text-anchor="middle">Frontale · ${f(r.W)} m</text><text transform="translate(${ox + w + 16},${oy + h / 2}) rotate(-90)" text-anchor="middle">Fondo</text>`;
+    if (dims) {
+      const nx = r.mic[0] < r.L / 2 ? 0 : r.L, ny = r.mic[1] < r.W / 2 ? 0 : r.W, a = P(nx, r.mic[1]), b = P(r.mic[0], ny);
+      s += `<line x1="${M[0]}" y1="${M[1]}" x2="${a[0]}" y2="${a[1]}" stroke="var(--ink)" stroke-width="1"/><line x1="${M[0]}" y1="${M[1]}" x2="${b[0]}" y2="${b[1]}" stroke="var(--ink)" stroke-width="1"/>`;
+      s += `<text class="ink" x="${(M[0] + a[0]) / 2}" y="${M[1] + 14}" text-anchor="middle">${f(Math.abs(nx - r.mic[0]))} m</text><text class="ink" x="${M[0] + 6}" y="${(M[1] + b[1]) / 2 + 4}">${f(Math.abs(ny - r.mic[1]))} m</text>`;
+    }
+    el.innerHTML = s + '</svg>';
+  }
+
+  /* ---------- Fase 1: ambiente ---------- */
+  function renderRoom() {
+    const g = geo(), r = state.room;
+    $('#geo-out').textContent = `Volume ${f(g.V, 1)} m³ · superficie ${f(g.S, 1)} m²`;
+    drawPlan($('#plan'), false);
+    const first = AC.imageSources(r, 1).paths;
+    $('#first-table').innerHTML = '<tr><th>Superficie</th><th class="n">Ritardo</th><th class="n">Percorso in più</th><th class="n">Livello stimato</th><th>Punto di riflessione (x; y; z)</th></tr>' +
+      first.map((p) => `<tr><td>${surfName(p.surface)}</td><td class="n">${f(p.delay, 1)} ms</td><td class="n">${f((p.delay / 1000) * AC.C)} m</td><td class="n">${f(p.level, 1)} dB</td><td>${p.point.map((v) => f(Math.abs(v), 2)).join('; ')} m</td></tr>`).join('');
+    const ab = AC.absorption(r), mdl = model();
+    $('#model-table').innerHTML = '<tr><th>Banda</th>' + AC.BANDS.map((b) => `<th class="n">${bandLabel(b)}</th>`).join('') + '</tr>' +
+      '<tr><td>Assorbimento (m²)</td>' + ab.A.map((a) => `<td class="n">${f(a, 1)}</td>`).join('') + '</tr>' +
+      '<tr><td>RT60 (s)</td>' + mdl.map((t) => `<td class="n">${f(t)}</td>`).join('') + '</tr>';
+    $('#photos').innerHTML = state.photos.map((p, i) => `<figure><img src="${p.url}" alt="${esc(p.caption || 'Foto ' + (i + 1))}"><input type="text" id="cap-${i}" data-cap="${i}" value="${esc(p.caption)}" placeholder="Didascalia" aria-label="Didascalia foto ${i + 1}"></figure>`).join('');
+  }
+
+  /* ---------- Fase 2: misura ---------- */
+  function renderMic() {
+    drawPlan($('#plan2'), true);
+    const r = state.room, d = Math.hypot(r.src[0] - r.mic[0], r.src[1] - r.mic[1], r.src[2] - r.mic[2]), dmin = AC.minDistance(r, mid(model()));
+    const wx = r.mic[0] < r.L / 2 ? ['parete frontale', r.mic[0]] : ['parete di fondo', r.L - r.mic[0]], wy = r.mic[1] < r.W / 2 ? ['parete sinistra', r.mic[1]] : ['parete destra', r.W - r.mic[1]];
+    const out = [
+      `<b>Microfono</b>: a ${f(wx[1])} m dalla ${wx[0]} e ${f(wy[1])} m dalla ${wy[0]}, a ${f(r.mic[2])} m da terra (orecchie di una persona seduta). Montalo su un'asta o un treppiede con la capsula rivolta verso il soffitto.`,
+      `<b>Sorgente</b>: a ${f(r.src[0])} m dalla parete frontale e ${f(r.src[1])} m dalla parete sinistra, a ${f(r.src[2])} m da terra, dove normalmente si trova chi parla o i diffusori.`,
+      `<b>Distanza sorgente–microfono</b>: ${f(d)} m. Il minimo per non misurare solo il suono diretto in questa stanza è ${f(dmin)} m.`,
+    ];
+    if (d < dmin) out.push('<b>Attenzione</b>: sorgente e microfono sono troppo vicini, allontanali.');
+    if (Math.min(wx[1], wy[1]) < 1 && Math.min(r.L, r.W) > 3) out.push('<b>Attenzione</b>: il microfono è a meno di 1 m da una parete, la riflessione vicina altera la misura.');
+    if (Math.abs(r.mic[0] / r.L - 0.5) < 0.04 && Math.abs(r.mic[1] / r.W - 0.5) < 0.04) out.push('<b>Attenzione</b>: il centro esatto della stanza va evitato, lì alcune risonanze si annullano. Spostati di almeno 50 cm.');
+    out.push('Per un rilievo completo ripeti la misura in altri due punti distanti almeno 2 m tra loro e confronta i risultati.');
+    $('#mic-advice').innerHTML = out.map((a) => `<li>${a}</li>`).join('');
+    $('#mic-note').textContent = AC.MICS.find((m) => m.id === state.mic.type).note;
+  }
+  const micLabel = () => AC.MICS.find((m) => m.id === state.mic.type).name + (state.mic.model ? ' · ' + state.mic.model : '');
+
+  function renderMeas() {
+    const m = state.meas;
+    $('#meas-tag').textContent = m ? m.label : 'Nessuna misura';
+    if (!m) return;
+    const res = m.res, tm = targetMid();
+    const tile = (label, val, unit, sub) => `<div class="tile"><span>${label}</span><b>${val}<small>${unit}</small></b><em>${sub}</em></div>`;
+    $('#tiles').innerHTML =
+      tile('RT60 a 500–1000 Hz', f(res.rtMid), 's', `obiettivo ${f(tm)} s`) +
+      tile('EDT', f(res.edtMid), 's', 'riverbero percepito') +
+      tile('C50', f(res.c50, 1), 'dB', res.c50 >= 0 ? 'parlato chiaro' : 'parlato impastato') +
+      tile('D50', f(res.d50 * 100, 0), '%', 'energia utile entro 50 ms') +
+      tile('Dinamica', f(res.broad.inr, 0), 'dB', res.broad.inr >= 45 ? 'misura affidabile' : res.broad.inr >= 30 ? 'accettabile' : 'rumore troppo alto');
+    const refl = AC.matchReflections(res.reflections, state.room), R = state.etcRange;
+    drawChart($('#etc-chart'), {
+      label: 'Curva energia-tempo con le riflessioni rilevate', h: 280, unit: 'dB',
+      x: { min: -2, max: R, title: 'Tempo dopo il suono diretto (ms)', ticks: [0, 1, 2, 3, 4, 5, 6].map((i) => ({ v: (i * R) / 6, l: String(Math.round((i * R) / 6)) })), fmt: (x) => f(x, 1) + ' ms · percorso +' + f((Math.max(0, x) / 1000) * AC.C, 2) + ' m' },
+      y: { min: -60, max: 6, title: 'Livello (dB)', ticks: [0, -10, -20, -30, -40, -50, -60] },
+      series: [{ name: 'Energia', color: '--s1', pts: res.etc.filter((p) => p[0] >= -2 && p[0] <= R).map((p) => [p[0], Math.max(-60, p[1])]) }],
+      marks: refl.map((r, i) => ({ x: r.ms, y: r.dB, label: String(i + 1), color: r.kind === 'eco' ? '--crit' : '--s2' })),
+    });
+    $('#refl-table').innerHTML = refl.length
+      ? '<tr><th class="n">N.</th><th class="n">Ritardo</th><th class="n">Livello</th><th class="n">Percorso in più</th><th>Superficie probabile</th><th>Valutazione</th></tr>' +
+        refl.map((r, i) => `<tr><td class="n">${i + 1}</td><td class="n">${f(r.ms, 1)} ms</td><td class="n">${f(r.dB, 1)} dB</td><td class="n">${f(r.extra)} m</td><td>${r.surface ? surfName(r.surface) : 'secondo ordine o arredo'}</td><td><span class="pill ${KIND[r.kind][1]}"><i></i>${KIND[r.kind][0]}</span></td></tr>`).join('')
+      : '<tr><td>Nessuna riflessione isolata emerge dal decadimento.</td></tr>';
+    const fl = $('#flutter'); fl.hidden = !res.flutter;
+    if (res.flutter) fl.textContent = `Flutter echo: ripetizioni ogni ${f(res.flutter.periodMs, 0)} ms, compatibili con due superfici parallele a ${f(res.flutter.distance, 1)} m${flutterPair(res.flutter) ? ' (' + flutterPair(res.flutter) + ')' : ''}.`;
+    const b = state.decayBand, d = b < 0 ? res.broad : res.bands[b], tmax = Math.max(0.2, d.curve.length ? d.curve[d.curve.length - 1][0] : 1);
+    const stepT = tmax > 2 ? 0.5 : tmax > 0.8 ? 0.2 : 0.1, ticks = [];
+    for (let t = 0; t <= tmax + 1e-9; t += stepT) ticks.push({ v: t, l: f(t, 1) });
+    drawChart($('#decay-chart'), {
+      label: 'Curva di decadimento di Schroeder', h: 240, unit: 'dB',
+      x: { min: 0, max: tmax, title: 'Tempo (s)', ticks, fmt: (x) => f(x, 2) + ' s' },
+      y: { min: -60, max: 0, title: 'Energia residua (dB)', ticks: [0, -10, -20, -30, -40, -50, -60] },
+      series: [{ name: 'Decadimento', color: '--s1', pts: d.curve.filter((p) => p[1] >= -60) }],
+    });
+    $('#band-table').innerHTML = '<tr><th>Banda</th>' + AC.BANDS.map((x) => `<th class="n">${bandLabel(x)}</th>`).join('') + '</tr>' +
+      '<tr><td>RT60 (s)</td>' + res.bands.map((x) => `<td class="n">${f(x.rt)}</td>`).join('') + '</tr>' +
+      '<tr><td>Metodo</td>' + res.bands.map((x) => `<td class="n">${x.method || '—'}</td>`).join('') + '</tr>' +
+      '<tr><td>EDT (s)</td>' + res.bands.map((x) => `<td class="n">${f(x.edt)}</td>`).join('') + '</tr>' +
+      '<tr><td>Dinamica (dB)</td>' + res.bands.map((x) => `<td class="n">${f(x.inr, 0)}</td>`).join('') + '</tr>';
+  }
+  function flutterPair(fl) {
+    const r = state.room, c = [[r.L, 'parete frontale e di fondo'], [r.W, 'pareti laterali'], [r.H, 'pavimento e soffitto']];
+    const m = c.find((x) => Math.abs(x[0] - fl.distance) / x[0] < 0.12);
+    return m ? m[1] : '';
+  }
+
+  /* ---------- Fase 3: intervento ---------- */
+  function buildProducts() {
+    $('#prod-table').innerHTML = '<tr><th></th><th>Prodotto</th><th>Posa</th><th class="n">α medio</th><th class="n">α 125 Hz</th><th class="n">Prezzo €/m²</th><th class="n">Superficie m²</th><th class="n">Pannelli</th><th class="n">Costo</th></tr>' +
+      AC.PRODUCTS.map((p) => `<tr data-p="${p.id}"><td><input type="checkbox" id="en-${p.id}" data-en="${p.id}" aria-label="Usa ${esc(p.name)}"></td><td>${esc(p.name)}</td><td>${WHERE[p.where]}</td><td class="n">${f((p.a[1] + p.a[2] + p.a[3] + p.a[4]) / 4)}</td><td class="n">${f(p.a[0])}</td>` +
+        `<td class="n"><input type="number" id="pr-${p.id}" data-price="${p.id}" min="0" step="5" aria-label="Prezzo ${esc(p.name)}"></td><td class="n"><input type="number" id="ar-${p.id}" data-area="${p.id}" min="0" step="0.72" aria-label="Superficie ${esc(p.name)}"></td><td class="n" data-cnt></td><td class="n" data-cost></td></tr>`).join('') +
+      '<tr><td></td><td><b>Totale</b></td><td></td><td></td><td></td><td></td><td class="n" id="tot-area"></td><td class="n" id="tot-cnt"></td><td class="n" id="tot-cost"></td></tr>';
+    syncProducts();
+  }
+  function syncProducts() {
+    for (const p of AC.PRODUCTS) {
+      $('#en-' + p.id).checked = !!state.treat.enabled[p.id];
+      $('#pr-' + p.id).value = state.treat.prices[p.id] || p.price;
+      $('#ar-' + p.id).value = state.treat.areas[p.id] || 0;
+    }
+  }
+  function totals() {
+    let area = 0, cost = 0, cnt = 0; const used = { wall: 0, ceiling: 0, floor: 0 };
+    for (const p of AC.PRODUCTS) {
+      const a = state.treat.areas[p.id] || 0, c = a * (state.treat.prices[p.id] || p.price), n = Math.ceil(a / AC.PANEL_M2 - 1e-6);
+      area += a; cost += c; used[p.where] += a;
+      if (p.where !== 'floor' && p.id !== 'curtain' && p.id !== 'ceil') cnt += n;
+      const row = $(`tr[data-p="${p.id}"]`);
+      if (row) { $('[data-cnt]', row).textContent = a && p.where !== 'floor' && p.id !== 'curtain' && p.id !== 'ceil' ? n : '—'; $('[data-cost]', row).textContent = a ? Math.round(c).toLocaleString('it-IT') + ' €' : '—'; }
+    }
+    return { area, cost, cnt, used };
+  }
+  function advice(cur, after, tTar, tot) {
+    const out = [], r = state.room, cap = AC.capacity(r);
+    if (state.meas) {
+      const refl = AC.matchReflections(state.meas.res.reflections, r), first = AC.imageSources(r, 1).paths;
+      for (const x of refl) {
+        if (x.surface && x.dB > -12 && x.kind !== 'tardiva') {
+          const pt = first.find((p) => p.surface === x.surface).point.map((v) => f(Math.abs(v), 1)).join('; ');
+          out.push(`<b>${surfName(x.surface)}</b>: riflessione a ${f(x.ms, 1)} ms e ${f(x.dB, 0)} dB. Punto di riflessione a x; y; z = ${pt} m${x.surface === 'floor' ? ' oppure un tappeto tra sorgente e ascoltatore' : ''}.`);
+        }
+        if (x.kind === 'eco') out.push(`<b>Eco a ${f(x.ms, 0)} ms</b> (percorso più lungo di ${f(x.extra, 1)} m): tratta con materiale spesso la parete opposta alla sorgente, oppure rompi la riflessione con elementi diffondenti.`);
+      }
+      const fl = state.meas.res.flutter;
+      if (fl) out.push(`<b>Flutter echo</b> tra superfici parallele a ${f(fl.distance, 1)} m${flutterPair(fl) ? ' (' + flutterPair(fl) + ')' : ''}: copri almeno una delle due con pannelli sfalsati rispetto alla parete di fronte.`);
+    }
+    if (after[0] > tTar[0] * 1.2) out.push('<b>Basse frequenze</b>: a 125 Hz il riverbero resta lungo rispetto alle medie. Aggiungi bass trap negli angoli verticali o pannelli da 100 mm distanziati dalla parete.');
+    const over = Object.keys(cap).filter((k) => tot.used[k] > cap[k] + 0.01);
+    const cw = $('#cap-warn'); cw.hidden = !over.length;
+    if (over.length) cw.textContent = 'La superficie prevista supera quella realisticamente disponibile su: ' + over.map((k) => `${WHERE[k]} (massimo circa ${f(cap[k], 1)} m²)`).join(', ') + '.';
+    if (tot.area > 0 && after.some((t, b) => t > tTar[b] * 1.2)) out.push('Con i prodotti selezionati l\'obiettivo non è raggiunto in tutte le bande: abilita altri prodotti o aumenta le superfici.');
+    if (!tot.area) out.push(cur.t.every((t, b) => t <= tTar[b] * 1.2) ? 'Il riverbero attuale rientra già nell\'obiettivo: non serve aggiungere assorbimento.' : 'Premi «Proponi l\'intervento» per calcolare le superfici necessarie.');
+    return out;
+  }
+  const LTYPES = { panel: ['Pannelli a parete', '--s3', 0.9], ceil: ['Pannelli a soffitto', '--s1', 0.75], trap: ['Bass trap', '--ink', 0.85], curtain: ['Tenda', '--s2', 0.35], carpet: ['Tappeto', '--muted', 0.3] };
+  function renderLayout() {
+    const r = state.room, lay = AC.layout(r, state.treat.areas), el = $('#layout');
+    const Wpx = Math.max(280, el.clientWidth || 800), tw = r.L + 2 * r.H, th = r.W + 2 * r.H, sc = Math.min((Wpx - 44) / tw, 560 / th), ox = (Wpx - tw * sc) / 2;
+    const R = (q) => { const u = AC.unfold(r, q); return [ox + u[0] * sc, 20 + u[1] * sc, u[2] * sc, u[3] * sc]; };
+    let s = `<svg width="${Wpx}" height="${th * sc + 40}" viewBox="0 0 ${Wpx} ${th * sc + 40}" role="img" aria-label="Sviluppo della stanza con la posizione dei pannelli su pareti e soffitto">`;
+    const faces = [['ceiling', r.L, r.W, 'Pianta · soffitto e pavimento'], ['left', r.L, r.H, 'Parete sinistra'], ['right', r.L, r.H, 'Parete destra'], ['front', r.W, r.H, 'Parete frontale'], ['back', r.W, r.H, 'Parete di fondo']];
+    for (const [id, w, h] of faces) { const q = R({ face: id, u: 0, v: 0, w, h }); s += `<rect x="${q[0]}" y="${q[1]}" width="${q[2]}" height="${q[3]}" fill="var(--bg)" stroke="var(--ink-2)" stroke-width="${id === 'ceiling' ? 2 : 1}"/>`; }
+    for (const q0 of lay.rects) {
+      const q = R(q0), t = LTYPES[q0.type];
+      s += `<rect x="${q[0].toFixed(1)}" y="${q[1].toFixed(1)}" width="${q[2].toFixed(1)}" height="${q[3].toFixed(1)}" rx="1.5" fill="var(${t[1]})" fill-opacity="${t[2]}" stroke="var(--panel)" stroke-width="1.5"${q0.type === 'carpet' ? ' stroke-dasharray="4 3"' : ''}/>`;
+    }
+    for (const d of lay.dots) { const q = R({ face: d.face, u: d.u, v: d.v }); s += `<circle cx="${q[0]}" cy="${q[1]}" r="4" fill="var(--s2)" stroke="var(--panel)" stroke-width="2"/>`; }
+    const S = R({ face: 'floor', u: r.src[0], v: r.src[1] }), M = R({ face: 'floor', u: r.mic[0], v: r.mic[1] });
+    s += `<circle cx="${S[0]}" cy="${S[1]}" r="5" fill="none" stroke="var(--ink)" stroke-width="2"/><text class="ink" x="${S[0] + 9}" y="${S[1] + 4}">S</text><rect x="${M[0] - 4}" y="${M[1] - 4}" width="8" height="8" fill="none" stroke="var(--ink)" stroke-width="2"/><text class="ink" x="${M[0] + 9}" y="${M[1] + 4}">M</text>`;
+    for (const [id, w, h, name] of faces) {
+      const q = R({ face: id, u: 0, v: 0, w, h });
+      if (id === 'front' || id === 'back') s += `<text transform="translate(${id === 'front' ? q[0] - 6 : q[0] + q[2] + 14},${q[1] + q[3] / 2}) rotate(-90)" text-anchor="middle">${name}</text>`;
+      else if (id !== 'ceiling') s += `<text x="${q[0] + q[2] / 2}" y="${id === 'right' ? q[1] - 6 : q[1] + q[3] + 14}" text-anchor="middle">${name}</text>`;
+    }
+    el.innerHTML = s + '</svg>';
+    const usedTypes = Object.keys(LTYPES).filter((k) => lay.rects.some((q) => q.type === k));
+    $('#layout-legend').innerHTML = usedTypes.map((k) => `<span><i class="sw" style="background:var(${LTYPES[k][1]});opacity:${LTYPES[k][2]}"></i>${LTYPES[k][0]}</span>`).join('') +
+      '<span><i class="sw" style="background:var(--s2);border-radius:50%;width:10px"></i>Punto di prima riflessione</span><span>S sorgente · M microfono · al centro la pianta</span>';
+    $('#layout-table').innerHTML = lay.notes.length ? '<tr><th>Superficie</th><th>Cosa installare</th></tr>' + lay.notes.map((n) => `<tr><td><b>${n.face}</b></td><td>${esc(n.text)}</td></tr>`).join('') : '<tr><td>Nessun pannello da installare: definisci l\'intervento nella tabella qui sotto.</td></tr>';
+    return lay;
+  }
+  function renderTreat() {
+    const cur = current(), tm = targetMid(), tTar = AC.targetCurve(tm), after = AC.rtAfter(state.room, cur.t, state.treat.areas), tot = totals();
+    const use = AC.USES.find((u) => u.id === state.use);
+    if (document.activeElement !== $('#target')) $('#target').value = tm.toFixed(2);
+    $('#target-note').textContent = state.target ? 'Valore impostato a mano.' : `Riferimento: ${use.ref}, per un volume di ${f(geo().V, 0)} m³. Tolleranza ±20%.`;
+    const nMeas = cur.fromMeas.filter(Boolean).length;
+    $('#base-note').textContent = !state.meas || !nMeas ? 'stato attuale: modello dei materiali' : nMeas === 6 ? 'stato attuale: ' + state.meas.label.toLowerCase() : `stato attuale: misura in ${nMeas} bande, modello nelle altre`;
+    const pts = (arr) => arr.map((v, i) => [i, v]), ymax = Math.ceil(Math.max(...cur.t, ...tTar.map((v) => v * 1.2)) * 5) / 5 + 0.2, yt = [];
+    for (let v = 0; v <= ymax + 1e-9; v += ymax > 2 ? 0.5 : 0.2) yt.push(Math.round(v * 10) / 10);
+    drawChart($('#rt-chart'), {
+      label: 'Tempo di riverbero per banda: attuale, obiettivo e dopo l\'intervento', h: 280, unit: 's', dec: 2,
+      x: { min: -0.3, max: 5.3, title: 'Banda d\'ottava', ticks: AC.BANDS.map((b, i) => ({ v: i, l: bandLabel(b) })), fmt: (x) => bandLabel(AC.BANDS[Math.round(x)]) },
+      y: { min: 0, max: yt[yt.length - 1], title: 'RT60 (s)', ticks: yt },
+      area: { name: 'Tolleranza ±20%', color: '--s2', hi: pts(tTar.map((v) => v * 1.2)), lo: pts(tTar.map((v) => v * 0.8)) },
+      series: [{ name: 'Attuale', color: '--s1', pts: pts(cur.t), dots: true }, { name: 'Obiettivo', color: '--s2', pts: pts(tTar), dash: true }, { name: 'Dopo l\'intervento', color: '--s3', pts: pts(after), dots: true }],
+    });
+    $('#rt-table').innerHTML = '<tr><th>Banda</th>' + AC.BANDS.map((b) => `<th class="n">${bandLabel(b)}</th>`).join('') + '</tr>' +
+      '<tr><td>Attuale (s)</td>' + cur.t.map((t) => `<td class="n">${f(t)}</td>`).join('') + '</tr>' +
+      '<tr><td>Obiettivo (s)</td>' + tTar.map((t) => `<td class="n">${f(t)}</td>`).join('') + '</tr>' +
+      '<tr><td>Dopo l\'intervento (s)</td>' + after.map((t) => `<td class="n">${f(t)}</td>`).join('') + '</tr>';
+    $('#tot-area').textContent = f(tot.area, 1); $('#tot-cnt').textContent = tot.cnt || '—'; $('#tot-cost').textContent = Math.round(tot.cost).toLocaleString('it-IT') + ' €';
+    const ok = after.every((t, b) => t <= tTar[b] * 1.2 && t >= tTar[b] * 0.8 * (b ? 1 : 0.8));
+    const tile = (label, val, unit, sub) => `<div class="tile"><span>${label}</span><b>${val}<small>${unit}</small></b><em>${sub}</em></div>`;
+    $('#treat-tiles').innerHTML = tile('RT60 attuale', f(mid(cur.t)), 's', '500–1000 Hz') + tile('RT60 previsto', f(mid(after)), 's', ok ? 'entro la tolleranza' : mid(after) > tm ? 'sopra l\'obiettivo' : 'fuori tolleranza') +
+      tile('Superficie trattata', f(tot.area, 1), 'm²', `${tot.cnt} pannelli 120 × 60 cm`) + tile('Costo materiali', Math.round(tot.cost).toLocaleString('it-IT'), '€', 'prezzi indicativi, posa esclusa');
+    const adv = advice(cur, after, tTar, tot);
+    $('#advice').innerHTML = adv.map((a) => `<li>${a}</li>`).join('');
+    return { cur, tTar, after, tot, adv, tm, lay: renderLayout() };
+  }
+
+  /* ---------- Fase 4: report ---------- */
+  function renderReport(t) {
+    const r = state.room, g = geo(), m = state.meas;
+    const row = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
+    let s = `<dl class="kv">${state.client ? row('Cliente', esc(state.client)) : ''}${state.project ? row('Ambiente', esc(state.project)) : ''}${row('Data', new Date().toLocaleDateString('it-IT'))}${row('Dimensioni', `${f(r.L)} × ${f(r.W)} × ${f(r.H)} m`)}${row('Volume e superficie', `${f(g.V, 1)} m³ · ${f(g.S, 1)} m²`)}` +
+      AC.SURFACES.map((x) => row(x.name, AC.MATERIALS[r.mats[x.id]].name)).join('') + row('Vetrate e porte', `${f(r.windows, 1)} m² · ${f(r.doors, 1)} m²`) +
+      row('Destinazione d\'uso', AC.USES.find((u) => u.id === state.use).name) + row('RT60 obiettivo', f(t.tm) + ' s a 500–1000 Hz') +
+      (state.scan ? row('Scansione', `${state.scan.vertices.toLocaleString('it-IT')} vertici`) : '') + '</dl>';
+    if (m) {
+      const res = m.res, refl = AC.matchReflections(res.reflections, r);
+      s += `<div><h3>Misura · ${esc(m.label)}</h3><dl class="kv">${row('RT60 a 500–1000 Hz', f(res.rtMid) + ' s')}${row('EDT', f(res.edtMid) + ' s')}${row('C50 / D50', f(res.c50, 1) + ' dB / ' + f(res.d50 * 100, 0) + ' %')}${row('Dinamica', f(res.broad.inr, 0) + ' dB')}${row('Microfono', esc(micLabel()))}` +
+        row('Riflessioni rilevate', refl.length ? refl.map((x) => `${f(x.ms, 1)} ms (${f(x.dB, 0)} dB${x.surface ? ', ' + surfName(x.surface).toLowerCase() : ''})`).join(' · ') : 'nessuna') +
+        row('Echi', refl.some((x) => x.kind === 'eco') ? refl.filter((x) => x.kind === 'eco').map((x) => f(x.ms, 0) + ' ms').join(', ') : 'nessuno') + row('Flutter echo', res.flutter ? `periodo ${f(res.flutter.periodMs, 0)} ms` : 'non rilevato') + '</dl></div>';
+    }
+    s += '<div><h3>Tempo di riverbero per banda</h3><div class="scroll">' + $('#rt-table').outerHTML.replace('id="rt-table"', '') + '</div></div>';
+    const used = AC.PRODUCTS.filter((p) => state.treat.areas[p.id] > 0);
+    s += '<div><h3>Intervento</h3>' + (used.length ? '<div class="scroll"><table><tr><th>Prodotto</th><th>Posa</th><th class="n">Superficie</th><th class="n">Costo</th></tr>' +
+      used.map((p) => `<tr><td>${esc(p.name)}</td><td>${WHERE[p.where]}</td><td class="n">${f(state.treat.areas[p.id], 1)} m²</td><td class="n">${Math.round(state.treat.areas[p.id] * (state.treat.prices[p.id] || p.price)).toLocaleString('it-IT')} €</td></tr>`).join('') +
+      `<tr><td><b>Totale</b></td><td></td><td class="n">${f(t.tot.area, 1)} m²</td><td class="n">${Math.round(t.tot.cost).toLocaleString('it-IT')} €</td></tr></table></div>` : '<p class="note">Nessun intervento definito.</p>') + '</div>';
+    s += `<div><h3>Dove installare i pannelli</h3><div class="chart">${$('#layout').innerHTML}</div><div class="scroll">${$('#layout-table').outerHTML.replace('id="layout-table"', '')}</div><ul class="advice">${t.adv.map((a) => `<li>${a}</li>`).join('')}</ul></div>`;
+    if (state.photos.length) s += '<div><h3>Foto</h3><div class="photos">' + state.photos.map((p) => `<figure><img src="${p.url}" alt=""><figcaption class="note">${esc(p.caption)}</figcaption></figure>`).join('') + '</div></div>';
+    s += '<p class="note">Coefficienti di assorbimento e prezzi sono valori tipici: verifica le schede tecniche dei prodotti scelti. Le misure con microfono non calibrato hanno valore indicativo e non sostituiscono un collaudo secondo UNI EN ISO 3382.</p>';
+    s += `<div class="sign"><b>${SIGN_NAME}</b>per ${SIGN_ORG}</div>`;
+    $('#report-body').innerHTML = s;
+  }
+
+  let lastT = null;
+  function renderAll() { save(); renderGuide(); renderRoom(); render3D(); renderMic(); renderMeas(); lastT = renderTreat(); renderReport(lastT); }
+
+  /* ---------- Vista 3D ---------- */
+  function draw3D(cv, withPanels) {
+    const r = state.room, W = cv.clientWidth || 600, Hh = Math.round(Math.min(420, Math.max(240, W * 0.62))), dpr = window.devicePixelRatio || 1;
+    cv.width = W * dpr; cv.height = Hh * dpr; cv.style.height = Hh + 'px';
+    const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, Hh);
+    const cs = getComputedStyle(document.documentElement), col = (n) => cs.getPropertyValue(n).trim();
+    const cy = Math.cos(state.view.yaw), sy = Math.sin(state.view.yaw), cp = Math.cos(state.view.pitch), sp = Math.sin(state.view.pitch);
+    const R = Math.hypot(r.L, r.W, r.H) / 2, sc = Math.min((W / 2 / R) * 0.9, (Hh / 2 / R) * 1.12);
+    const pr = (x, y, z) => { x -= r.L / 2; y -= r.W / 2; z -= r.H / 2; const x1 = x * cy - y * sy, y1 = x * sy + y * cy, d = y1 * cp - z * sp, k = 1 / (1 + d / (R * 7)); return [W / 2 + x1 * sc * k, Hh / 2 - (y1 * sp + z * cp) * sc * k]; };
+    const N = { front: [-1, 0, 0], back: [1, 0, 0], left: [0, -1, 0], right: [0, 1, 0], floor: [0, 0, -1], ceiling: [0, 0, 1] };
+    const far = (id) => { const n = N[id]; return (n[0] * sy + n[1] * cy) * cp - n[2] * sp > 0; };
+    const P3 = (face, u, v) => ({ left: [u, 0, v], right: [u, r.W, v], front: [0, u, v], back: [r.L, u, v], ceiling: [u, v, r.H], floor: [u, v, 0] }[face]);
+    const quad = (face, u, v, w, h) => [[u, v], [u + w, v], [u + w, v + h], [u, v + h]].map((q) => pr.apply(null, P3(face, q[0], q[1])));
+    const path = (pts) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); };
+    const dims = { left: [r.L, r.H], right: [r.L, r.H], front: [r.W, r.H], back: [r.W, r.H], floor: [r.L, r.W], ceiling: [r.L, r.W] };
+    const names = { left: 'Parete sinistra', right: 'Parete destra', front: 'Parete frontale', back: 'Parete di fondo' };
+    ctx.lineJoin = 'round'; ctx.font = '11px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+    for (const id of Object.keys(N)) {
+      const q = quad(id, 0, 0, dims[id][0], dims[id][1]); path(q);
+      if (far(id)) { ctx.globalAlpha = id === 'floor' ? 1 : 0.6; ctx.fillStyle = col('--panel'); ctx.fill(); ctx.globalAlpha = 1; }
+      ctx.strokeStyle = col('--ink-2'); ctx.lineWidth = far(id) ? 1.5 : 0.6; ctx.stroke();
+    }
+    if (state.scan && state.scan.cloud) { ctx.fillStyle = col('--muted'); ctx.globalAlpha = 0.55; for (const p of state.scan.cloud) { const q = pr(p[0], p[1], p[2]); ctx.fillRect(q[0], q[1], 1.6, 1.6); } ctx.globalAlpha = 1; }
+    if (withPanels) {
+      for (const q0 of AC.layout(r, state.treat.areas).rects) {
+        const face = q0.face, t = LTYPES[q0.type]; path(quad(face, q0.u, q0.v, q0.w, q0.h));
+        if (far(face)) { ctx.globalAlpha = t[2]; ctx.fillStyle = col(t[1]); ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = col('--panel'); ctx.lineWidth = 1; ctx.stroke(); }
+        else { ctx.strokeStyle = col(t[1]); ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]); }
+      }
+    }
+    ctx.fillStyle = col('--muted');
+    for (const id of Object.keys(names)) if (far(id)) { const q = pr.apply(null, P3(id, dims[id][0] / 2, r.H)); ctx.fillText(names[id], q[0], q[1] - 6); }
+    const mark = (p, label, color, square) => {
+      const a = pr(p[0], p[1], p[2]), b = pr(p[0], p[1], 0);
+      ctx.strokeStyle = col('--muted'); ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = col(color); ctx.strokeStyle = col('--panel'); ctx.lineWidth = 2; ctx.beginPath();
+      if (square) ctx.rect(a[0] - 5, a[1] - 5, 10, 10); else ctx.arc(a[0], a[1], 6, 0, 7);
+      ctx.fill(); ctx.stroke(); ctx.fillStyle = col('--ink'); ctx.font = '600 11px Inter, system-ui, sans-serif'; ctx.fillText(label, a[0], a[1] - 10);
+    };
+    mark(r.src, 'Sorgente', '--s1', false); mark(r.mic, 'Microfono', '--ink', true);
+  }
+  function render3D() {
+    draw3D($('#view3d'), false); draw3D($('#view3d-b'), true);
+    $('#v3d-note').textContent = state.scan ? `I punti grigi sono la scansione (${state.scan.vertices.toLocaleString('it-IT')} vertici); il riquadro è la stanza usata nei calcoli. Se non coincidono, correggi le dimensioni o cambia l'asse verticale.` : 'Stanza ricostruita dalle dimensioni inserite. Carica una scansione per sovrapporre i punti rilevati.';
+  }
+  function bind3D(cv) {
+    let last = null;
+    cv.addEventListener('pointerdown', (e) => { last = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', (e) => {
+      if (!last) return;
+      state.view.yaw += (e.clientX - last[0]) * 0.01;
+      if (e.pointerType === 'mouse') state.view.pitch = Math.min(1.45, Math.max(0.08, state.view.pitch + (e.clientY - last[1]) * 0.008));
+      last = [e.clientX, e.clientY]; render3D();
+    });
+    const end = () => { last = null; }; cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  }
+
+  /* ---------- Percorso guidato ---------- */
+  const goStep = (id) => { const b = $(`.steps button[data-step="${id}"]`); if (b) b.click(); };
+  function renderGuide() {
+    const t = state.touched, items = [
+      ['room', 'Geometria', !!(state.scan || t.dims), 'Carica la scansione LiDAR oppure inserisci lunghezza, larghezza e altezza.'],
+      ['room', 'Materiali', !!t.mats, 'Scegli le finiture tipiche, poi vetrate, porte e sedie.'],
+      ['meas', 'Posizioni', !!t.pos, 'Premi «Usa le posizioni consigliate» e sistema microfono e sorgente come in pianta.'],
+      ['meas', 'Misura', !!(state.meas && state.meas.real), 'Premi «Avvia la misura» e resta in silenzio fino alla fine.'],
+      ['treat', 'Intervento', !!t.treat, 'Scegli la destinazione d\'uso e premi «Proponi l\'intervento».'],
+      ['report', 'Relazione', !!t.pdf, 'Inserisci il cliente e scarica il PDF.'],
+    ];
+    const next = items.findIndex((x) => !x[2]);
+    $('#guide-list').innerHTML = items.map((x, i) => `<button type="button" data-go="${x[0]}" class="${x[2] ? 'done' : i === next ? 'next' : ''}"><span class="pill ${x[2] ? 'good' : i === next ? 'warn' : ''}"><i></i>${x[2] ? 'Fatto' : i === next ? 'Prossimo passo' : 'Da fare'}</span><b>${i + 1}. ${x[1]}</b>${x[3]}</button>`).join('');
+    $('#guide-note').textContent = next < 0 ? 'Analisi completa.' : next === 0 && !state.touched.dims ? 'I dati mostrati sono un esempio: sostituiscili seguendo i passi.' : `${items.filter((x) => x[2]).length} passi su ${items.length} completati`;
+  }
+
+  /* ---------- Misura: acquisizione ---------- */
+  const status = (msg, err) => { const el = $('#meas-status'); el.hidden = !msg; el.textContent = msg || ''; el.classList.toggle('err', !!err); };
+  const busy = (b) => { $$('#s-meas .btnrow button.btn').forEach((x) => { x.disabled = b; }); $('#audio-file').disabled = b; };
+  const later = (fn) => new Promise((res, rej) => setTimeout(() => { try { res(fn()); } catch (e) { rej(e); } }, 40));
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  window.__buildPdf = () => buildPdf();
+  function setMeas(res, label, extra) {
+    state.meas = { res, label, real: true };
+    const tail = extra ? ' ' + extra : '';
+    if (res.broad.inr < 25) status('Segnale troppo debole rispetto al rumore di fondo: alza il volume, avvicina la sorgente o ripeti in silenzio.' + tail, true);
+    else if (res.bands.some((b) => !b.rt)) status('Misura acquisita. Nelle bande senza dinamica sufficiente il calcolo dell\'intervento usa il modello dei materiali.' + tail);
+    else status('Misura acquisita e analizzata.' + tail);
+    renderAll();
+  }
+  // archivio delle registrazioni nel browser (IndexedDB)
+  let recs = [];
+  const idbDo = async (mode, fn) => {
+    try {
+      const db = await new Promise((res, rej) => { const q = indexedDB.open('rilievo-acustico', 1); q.onupgradeneeded = () => q.result.createObjectStore('rec', { keyPath: 'id' }); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+      return await new Promise((res, rej) => { const tx = db.transaction('rec', mode), rq = fn(tx.objectStore('rec')); tx.oncomplete = () => res(rq && rq.result); tx.onerror = () => rej(tx.error); });
+    } catch (e) { return null; }
+  };
+  const RECKIND = { sweep: 'Sweep di test', impulse: 'Impulso', file: 'File caricato' };
+  function renderRecs() {
+    $('#rec-wrap').hidden = !recs.length;
+    $('#rec-table').innerHTML = '<tr><th>Registrazioni salvate</th><th>Tipo</th><th class="n">Durata</th><th></th></tr>' + recs.map((x) => `<tr><td>${esc(x.name)}</td><td>${RECKIND[x.kind]}</td><td class="n">${f(x.data.length / x.fs, 1)} s</td><td class="n"><button class="btn sm" data-rec="an" data-id="${x.id}">Analizza</button> <button class="btn sm" data-rec="dl" data-id="${x.id}"${window.claude ? ' hidden' : ''}>Scarica WAV</button> <button class="btn sm" data-rec="rm" data-id="${x.id}">Elimina</button></td></tr>`).join('');
+  }
+  async function keepRec(kind, data, fs, name) {
+    const rec = { id: Date.now(), kind, fs, name, data };
+    recs.unshift(rec); renderRecs(); await idbDo('readwrite', (s) => s.put(rec));
+    return rec;
+  }
+  function saveWav(rec) {
+    if (window.claude) return false;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([AC.encodeWav(rec.data, rec.fs)], { type: 'audio/wav' })); a.download = rec.name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    return true;
+  }
+  async function analyzeRec(rec, extra) {
+    status('Analisi di ' + rec.name + '…');
+    const out = await later(() => {
+      if (rec.kind === 'sweep') return { res: AC.analyze(Float32Array.from(AC.deconvolve(rec.data, AC.testSweep(rec.fs))), rec.fs), label: 'Sweep misurato' };
+      if (rec.kind === 'impulse') return { res: AC.analyze(rec.data, rec.fs), label: 'Impulso misurato' };
+      const a = AC.autoIR(rec.data, rec.fs);
+      return { res: AC.analyze(a.ir, rec.fs), label: (a.kind === 'sweep' ? 'Sweep da file' : 'Impulso da file') };
+    });
+    setMeas(out.res, out.label, extra);
+  }
+  const stamp = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
+  async function record(seconds, withSweep, msg) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nomic');
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    await ctx.resume();
+    for (let n = 3; n > 0; n--) { status(`La registrazione parte tra ${n}…`); await wait(1000); }
+    const src = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(4096, 1, 1), mute = ctx.createGain(), chunks = [];
+    mute.gain.value = 0;
+    proc.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    src.connect(proc); proc.connect(mute); mute.connect(ctx.destination);
+    if (withSweep) {
+      const sweep = AC.testSweep(ctx.sampleRate), buf = ctx.createBuffer(1, sweep.length, ctx.sampleRate); buf.getChannelData(0).set(sweep);
+      const node = ctx.createBufferSource(); node.buffer = buf; node.connect(ctx.destination); node.start(ctx.currentTime + 0.5);
+    }
+    const t0 = Date.now();
+    while (Date.now() - t0 < seconds * 1000) { status(`${msg} ${Math.ceil(seconds - (Date.now() - t0) / 1000)} s`); await wait(250); }
+    proc.disconnect(); src.disconnect(); stream.getTracks().forEach((t) => t.stop());
+    const fs = ctx.sampleRate; ctx.close();
+    const data = new Float32Array(chunks.reduce((n, c) => n + c.length, 0)); let o = 0;
+    for (const c of chunks) { data.set(c, o); o += c.length; }
+    return { data, fs };
+  }
+  const micError = (e) => status(e && (e.message === 'nomic' || e.name === 'NotAllowedError' || e.name === 'SecurityError' || e.name === 'NotFoundError')
+    ? 'Il microfono non è accessibile: consenti l\'uso del microfono quando il browser lo chiede. Se la pagina non è aperta da un indirizzo https, il browser lo blocca.'
+    : 'Misura non riuscita: ' + (e && e.message ? e.message : 'errore sconosciuto') + '.', true);
+  async function doMeasure(kind) {
+    busy(true);
+    try {
+      const rec = await record(kind === 'sweep' ? 7.5 : 6, kind === 'sweep', kind === 'sweep' ? 'Registrazione in corso, suoni di test in riproduzione: resta in silenzio.' : 'Registrazione in corso: batti le mani una volta sola o fai scoppiare un palloncino, poi silenzio.');
+      const kept = await keepRec(kind, rec.data, rec.fs, `misura-${kind === 'sweep' ? 'sweep' : 'impulso'}-${stamp()}.wav`);
+      const saved = saveWav(kept);
+      await analyzeRec(kept, saved ? `File salvato sul dispositivo: ${kept.name}.` : '');
+    } catch (e) { micError(e); }
+    busy(false);
+  }
+  async function doPlay() {
+    busy(true);
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume();
+      const sweep = AC.testSweep(ctx.sampleRate), buf = ctx.createBuffer(1, sweep.length, ctx.sampleRate); buf.getChannelData(0).set(sweep);
+      const node = ctx.createBufferSource(); node.buffer = buf; node.connect(ctx.destination); node.start(ctx.currentTime + 1);
+      for (let n = 8; n > 0; n--) { status(`Suoni di test in riproduzione: resta in silenzio e non fermare la registrazione per altri ${n} s.`); await wait(1000); }
+      ctx.close(); status('Riproduzione terminata. Questa pagina non registra: ferma la registrazione fatta con l\'altro dispositivo o l\'altra app e scegli il file nel riquadro «Carica audio o video».');
+    } catch (e) { status('Riproduzione non riuscita: ' + e.message, true); }
+    busy(false);
+  }
+  async function doFile(file) {
+    busy(true); status('Decodifica di ' + file.name + '…');
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = await ctx.decodeAudioData(await file.arrayBuffer()); ctx.close();
+      const data = new Float32Array(buf.length);
+      for (let c = 0; c < buf.numberOfChannels; c++) { const ch = buf.getChannelData(c); for (let i = 0; i < data.length; i++) data[i] += ch[i] / buf.numberOfChannels; }
+      const rec = { id: Date.now(), kind: 'file', fs: buf.sampleRate, name: file.name, data };
+      if (data.length <= 60 * buf.sampleRate) await keepRec('file', data, buf.sampleRate, file.name);
+      await analyzeRec(rec);
+    } catch (e) { status('Non riesco a leggere l\'audio di questo file. Prova con WAV, MP3, M4A o MP4.', true); }
+    busy(false);
+  }
+  function doDemo(first) {
+    state.meas = { res: AC.analyze(AC.synthIR(state.room, 48000, 11), 48000), label: 'Esempio simulato' };
+    if (!first) { status('Risposta simulata dalla geometria e dai materiali inseriti: non è una misura reale.'); renderAll(); }
+  }
+
+  /* ---------- PDF per il cliente ---------- */
+  const RGB = { '--s1': [42, 120, 214], '--s2': [235, 104, 52], '--s3': [27, 175, 122], '--crit': [208, 59, 59] };
+  const P = (s) => String(s).replace(/<[^>]+>/g, '').replace(/[–—]/g, '-').replace(/€/g, 'EUR').replace(/…/g, '...').replace(/[‘’]/g, "'").replace(/[^\x00-\xff]/g, '');
+  const toJpeg = (url) => new Promise((res) => {
+    const im = new Image();
+    im.onload = () => { const k = Math.min(1, 1200 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = im.width * k; c.height = im.height * k; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res({ data: c.toDataURL('image/jpeg', 0.8), w: c.width, h: c.height }); };
+    im.onerror = () => res(null); im.src = url;
+  });
+  async function buildPdf() {
+    const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), PW = 210, PH = 297, M = 16, CW = PW - 2 * M;
+    const r = state.room, g = geo(), t = lastT, m = state.meas, today = new Date().toLocaleDateString('it-IT');
+    let y = M;
+    const need = (h) => { if (y + h > PH - 20) { doc.addPage(); y = M; } };
+    const font = (b, size, col) => { doc.setFont('helvetica', b ? 'bold' : 'normal'); doc.setFontSize(size); const c = col || [16, 24, 28]; doc.setTextColor(c[0], c[1], c[2]); };
+    const h2 = (txt) => { need(18); y += 3; font(true, 10, [14, 96, 115]); doc.text(P(txt).toUpperCase(), M, y + 3); doc.setDrawColor(14, 96, 115); doc.setLineWidth(0.3); doc.line(M, y + 5, PW - M, y + 5); y += 9; };
+    const para = (txt, size, col) => { font(false, size || 9.5, col); for (const ln of doc.splitTextToSize(P(txt), CW)) { need(4.6); doc.text(ln, M, y + 3.2); y += 4.6; } y += 1.2; };
+    const table = (rows, widths, o) => {
+      o = o || {};
+      rows.forEach((row, ri) => {
+        const head = o.head !== false && ri === 0;
+        font(head || (o.boldLast && ri === rows.length - 1) || (o.boldFirst && false), head ? 7.5 : 9, head ? [123, 134, 141] : null);
+        const cells = row.map((c, i) => doc.splitTextToSize(P(head ? String(c).toUpperCase() : c), widths[i] * CW - 3));
+        const h = Math.max.apply(null, cells.map((c) => c.length)) * 4.2 + 2.4; need(h);
+        let x = M;
+        cells.forEach((c, i) => { const right = (o.right || []).includes(i); if (o.keyCol && i === 0 && !head) font(false, 9, [71, 84, 92]); else if (!head) font(o.boldLast && ri === rows.length - 1, 9); doc.text(c, right ? x + widths[i] * CW - 1.5 : x + 1.5, y + 4.2, { align: right ? 'right' : 'left' }); x += widths[i] * CW; });
+        y += h; doc.setDrawColor(head ? 150 : 222); doc.setLineWidth(0.15); doc.line(M, y, PW - M, y);
+      });
+      y += 3;
+    };
+    const kv = (pairs) => table(pairs, [0.34, 0.66], { head: false, keyCol: true });
+    const chart = (o, h) => {
+      need(h + 4);
+      const x0 = M + 11, x1 = PW - M - 2, y0 = y + 6, y1 = y + h - 9;
+      const X = (v) => x0 + ((v - o.x.min) / (o.x.max - o.x.min)) * (x1 - x0), Y = (v) => y0 + ((o.y.max - Math.max(o.y.min, Math.min(o.y.max, v))) / (o.y.max - o.y.min)) * (y1 - y0);
+      font(false, 7, [123, 134, 141]); doc.setLineWidth(0.1);
+      for (const k of o.y.ticks) { doc.setDrawColor(226); doc.line(x0, Y(k), x1, Y(k)); doc.text(String(k).replace('.', ','), x0 - 1.5, Y(k) + 1, { align: 'right' }); }
+      for (const k of o.x.ticks) doc.text(P(k.l), X(k.v), y1 + 4, { align: 'center' });
+      doc.text(P(o.x.title), (x0 + x1) / 2, y1 + 8, { align: 'center' }); doc.text(P(o.y.title), M, y + 2.5);
+      let lx = M + 34;
+      if (o.series.length > 1) for (const q of o.series) { const c = RGB[q.color]; doc.setFillColor(c[0], c[1], c[2]); doc.rect(lx, y + 1, 4, 1, 'F'); doc.text(P(q.name), lx + 5.5, y + 2.5); lx += 9 + doc.getTextWidth(P(q.name)); }
+      if (o.area) {
+        const pts = o.area.hi.concat(o.area.lo.slice().reverse()).map((p) => [X(p[0]), Y(p[1])]), rel = [];
+        for (let i = 1; i < pts.length; i++) rel.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
+        doc.setFillColor(252, 228, 218); doc.lines(rel, pts[0][0], pts[0][1], [1, 1], 'F', true);
+        doc.rect(lx, y + 0.5, 4, 2.2, 'F'); doc.text(P(o.area.name), lx + 5.5, y + 2.5);
+      }
+      for (const q of o.series) {
+        const c = RGB[q.color]; doc.setDrawColor(c[0], c[1], c[2]); doc.setLineWidth(0.45); doc.setLineDashPattern(q.dash ? [1.6, 1.1] : [], 0);
+        const pts = q.pts.filter((p) => p[0] >= o.x.min && p[0] <= o.x.max).map((p) => [X(p[0]), Y(p[1])]);
+        for (let i = 1; i < pts.length; i++) doc.line(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+        doc.setLineDashPattern([], 0);
+        if (q.dots) { doc.setFillColor(c[0], c[1], c[2]); pts.forEach((p) => doc.circle(p[0], p[1], 0.9, 'F')); }
+      }
+      font(true, 7);
+      for (const k of o.marks || []) { if (k.x > o.x.max) continue; const c = RGB[k.color], cy = Math.max(y0 + 3, Y(k.y)); doc.setFillColor(c[0], c[1], c[2]); doc.circle(X(k.x), cy, 0.9, 'F'); doc.text(P(k.label), X(k.x), cy - 1.8, { align: 'center' }); }
+      y += h + 2;
+    };
+
+    // intestazione
+    font(true, 20, [14, 96, 115]); doc.text(P(SIGN_ORG).toUpperCase(), M, y + 6);
+    font(false, 9, [71, 84, 92]); doc.text(P(SIGN_NAME), M, y + 11);
+    font(true, 14); doc.text('Relazione acustica', PW - M, y + 6, { align: 'right' });
+    font(false, 9, [71, 84, 92]); doc.text(today, PW - M, y + 11, { align: 'right' });
+    y += 15; doc.setDrawColor(16, 24, 28); doc.setLineWidth(0.5); doc.line(M, y, PW - M, y); y += 5;
+    const headRows = []; if (state.client) headRows.push(['Cliente', state.client]); if (state.project) headRows.push(['Ambiente', state.project]);
+    if (headRows.length) kv(headRows);
+
+    h2('Ambiente');
+    kv([['Dimensioni', `${f(r.L)} × ${f(r.W)} × ${f(r.H)} m`], ['Volume e superficie', `${f(g.V, 1)} m³ · ${f(g.S, 1)} m²`]]
+      .concat(AC.SURFACES.map((x) => [x.name, AC.MATERIALS[r.mats[x.id]].name]))
+      .concat([['Vetrate e porte', `${f(r.windows, 1)} m² · ${f(r.doors, 1)} m²`], ['Destinazione d\'uso', AC.USES.find((u) => u.id === state.use).name], ['RT60 obiettivo', f(t.tm) + ' s a 500-1000 Hz']]));
+
+    if (m) {
+      const res = m.res, refl = AC.matchReflections(res.reflections, r);
+      h2('Misura');
+      kv([['Metodo', m.label], ['Microfono', micLabel()], ['Posizione microfono (x; y; z)', r.mic.map((v) => f(v)).join('; ') + ' m'], ['Posizione sorgente (x; y; z)', r.src.map((v) => f(v)).join('; ') + ' m'],
+        ['RT60 a 500-1000 Hz', f(res.rtMid) + ' s'], ['EDT', f(res.edtMid) + ' s'], ['C50 / D50', f(res.c50, 1) + ' dB / ' + f(res.d50 * 100, 0) + ' %'], ['Dinamica', f(res.broad.inr, 0) + ' dB'],
+        ['Flutter echo', res.flutter ? `periodo ${f(res.flutter.periodMs, 0)} ms` : 'non rilevato']]);
+      need(95); h2('Riflessioni ed echi');
+      chart($('#etc-chart')._opts, 62);
+      if (refl.length) table([['N.', 'Ritardo', 'Livello', 'Percorso in più', 'Superficie probabile', 'Valutazione']].concat(refl.map((x, i) => [i + 1, f(x.ms, 1) + ' ms', f(x.dB, 1) + ' dB', f(x.extra) + ' m', x.surface ? surfName(x.surface) : 'secondo ordine o arredo', KIND[x.kind][0]])), [0.07, 0.14, 0.14, 0.17, 0.26, 0.22], { right: [0, 1, 2, 3] });
+      else para('Nessuna riflessione isolata emerge dal decadimento.');
+    }
+
+    need(100); h2('Tempo di riverbero per banda');
+    chart($('#rt-chart')._opts, 66);
+    const bw = [0.28].concat(AC.BANDS.map(() => 0.12));
+    table([['Banda'].concat(AC.BANDS.map(bandLabel)), ['Attuale (s)'].concat(t.cur.t.map((v) => f(v))), ['Obiettivo (s)'].concat(t.tTar.map((v) => f(v))), ['Dopo l\'intervento (s)'].concat(t.after.map((v) => f(v)))], bw, { right: [1, 2, 3, 4, 5, 6] });
+
+    h2('Intervento proposto');
+    const used = AC.PRODUCTS.filter((p) => state.treat.areas[p.id] > 0);
+    if (used.length) {
+      table([['Prodotto', 'Posa', 'Superficie', 'Costo']].concat(used.map((p) => [p.name, WHERE[p.where], f(state.treat.areas[p.id], 1) + ' m²', Math.round(state.treat.areas[p.id] * (state.treat.prices[p.id] || p.price)).toLocaleString('it-IT') + ' EUR']))
+        .concat([['Totale', '', f(t.tot.area, 1) + ' m²', Math.round(t.tot.cost).toLocaleString('it-IT') + ' EUR']]), [0.52, 0.16, 0.16, 0.16], { right: [2, 3], boldLast: true });
+      para(`RT60 a 500-1000 Hz: da ${f(mid(t.cur.t))} s a ${f(mid(t.after))} s (obiettivo ${f(t.tm)} s). Prezzi dei materiali indicativi, posa esclusa.`, 9, [71, 84, 92]);
+
+      h2('Dove installare i pannelli');
+      const tw = r.L + 2 * r.H, th = r.W + 2 * r.H, sc = Math.min((CW - 12) / tw, 105 / th), ox = M + (CW - tw * sc) / 2;
+      need(th * sc + 20); const oy = y + 5;
+      const R = (q) => { const u = AC.unfold(r, q); return [ox + u[0] * sc, oy + u[1] * sc, u[2] * sc, u[3] * sc]; };
+      const faces = [['ceiling', r.L, r.W, 'Pianta: soffitto e pavimento'], ['left', r.L, r.H, 'Parete sinistra'], ['right', r.L, r.H, 'Parete destra'], ['front', r.W, r.H, 'Parete frontale'], ['back', r.W, r.H, 'Parete di fondo']];
+      doc.setLineWidth(0.25); doc.setDrawColor(71, 84, 92); doc.setFillColor(244, 246, 247);
+      for (const fc of faces) { const q = R({ face: fc[0], u: 0, v: 0, w: fc[1], h: fc[2] }); doc.rect(q[0], q[1], q[2], q[3], 'FD'); }
+      const FILL = { panel: [27, 175, 122], ceil: [42, 120, 214], trap: [16, 24, 28], curtain: [247, 195, 174], carpet: [205, 210, 213] };
+      doc.setDrawColor(255); doc.setLineWidth(0.2);
+      for (const q0 of t.lay.rects) { const q = R(q0), c = FILL[q0.type]; doc.setFillColor(c[0], c[1], c[2]); doc.rect(q[0], q[1], q[2], q[3], 'FD'); }
+      doc.setFillColor(235, 104, 52);
+      for (const d of t.lay.dots) { const q = R({ face: d.face, u: d.u, v: d.v }); doc.circle(q[0], q[1], 0.9, 'F'); }
+      font(true, 7);
+      const S = R({ face: 'floor', u: r.src[0], v: r.src[1] }), Mi = R({ face: 'floor', u: r.mic[0], v: r.mic[1] });
+      doc.setDrawColor(16, 24, 28); doc.setLineWidth(0.4); doc.circle(S[0], S[1], 1.1, 'S'); doc.text('S', S[0] + 2, S[1] + 1); doc.rect(Mi[0] - 1, Mi[1] - 1, 2, 2, 'S'); doc.text('M', Mi[0] + 2, Mi[1] + 1);
+      font(false, 7, [71, 84, 92]);
+      for (const fc of faces) {
+        const q = R({ face: fc[0], u: 0, v: 0, w: fc[1], h: fc[2] });
+        if (fc[0] === 'front' || fc[0] === 'back') doc.text(fc[3], fc[0] === 'front' ? q[0] - 1.5 : q[0] + q[2] + 3.5, q[1] + q[3] / 2 + doc.getTextWidth(fc[3]) / 2, { angle: 90 });
+        else if (fc[0] !== 'ceiling') doc.text(fc[3], q[0] + q[2] / 2, fc[0] === 'right' ? q[1] - 1.5 : q[1] + q[3] + 3.5, { align: 'center' });
+      }
+      y = oy + th * sc + 7;
+      let lx = M; font(false, 7.5, [71, 84, 92]);
+      const lg = (c, name, dot) => { doc.setFillColor(c[0], c[1], c[2]); if (dot) doc.circle(lx + 1.2, y + 1.4, 0.9, 'F'); else doc.rect(lx, y + 0.3, 3.5, 2.2, 'F'); doc.text(name, lx + 5, y + 2.4); lx += 8 + doc.getTextWidth(name); };
+      Object.keys(FILL).filter((k) => t.lay.rects.some((q) => q.type === k)).forEach((k) => lg(FILL[k], LTYPES[k][0]));
+      lg([235, 104, 52], 'Punto di prima riflessione', true); doc.text('S sorgente, M microfono, al centro la pianta', lx, y + 2.4);
+      y += 7;
+      if (t.lay.notes.length) table([['Superficie', 'Cosa installare']].concat(t.lay.notes.map((n) => [n.face, n.text])), [0.22, 0.78]);
+    } else para('Nessun intervento definito.');
+    for (const a of t.adv) para('- ' + a, 9);
+
+    if (state.photos.length) {
+      h2('Foto dell\'ambiente');
+      const imgs = (await Promise.all(state.photos.map((p) => toJpeg(p.url)))).map((im, i) => im && { im, cap: state.photos[i].caption }).filter(Boolean), w = (CW - 6) / 2;
+      for (let i = 0; i < imgs.length; i += 2) {
+        const pair = imgs.slice(i, i + 2), hs = pair.map((q) => Math.min(70, (w * q.im.h) / q.im.w)), hmax = Math.max.apply(null, hs);
+        need(hmax + 8);
+        pair.forEach((q, j) => { const x = M + j * (w + 6); doc.addImage(q.im.data, 'JPEG', x, y, (hs[j] * q.im.w) / q.im.h, hs[j]); font(false, 8, [71, 84, 92]); if (q.cap) doc.text(P(q.cap), x, y + hs[j] + 4); });
+        y += hmax + 8;
+      }
+    }
+
+    h2('Note');
+    para('Coefficienti di assorbimento e prezzi sono valori tipici: vanno verificati sulle schede tecniche dei prodotti scelti. Le misure eseguite con microfono non calibrato hanno valore indicativo e non sostituiscono un collaudo secondo UNI EN ISO 3382.', 8.5, [71, 84, 92]);
+
+    // firma
+    need(34); y += 10;
+    font(false, 9, [71, 84, 92]); doc.text('Data: ' + today, M, y + 14); doc.text('Il tecnico', PW - M - 35, y, { align: 'center' });
+    doc.setDrawColor(16, 24, 28); doc.setLineWidth(0.3); doc.line(PW - M - 70, y + 14, PW - M, y + 14);
+    font(true, 11); doc.text(P(SIGN_NAME), PW - M - 35, y + 19.5, { align: 'center' });
+    font(false, 9, [71, 84, 92]); doc.text('per ' + P(SIGN_ORG), PW - M - 35, y + 24, { align: 'center' });
+
+    const n = doc.getNumberOfPages();
+    for (let i = 1; i <= n; i++) { doc.setPage(i); font(false, 7.5, [123, 134, 141]); doc.text(`${P(SIGN_ORG)} · ${P(SIGN_NAME)}`, M, PH - 9); doc.text(`Pagina ${i} di ${n}`, PW - M, PH - 9, { align: 'right' }); }
+    return doc;
+  }
+  async function downloadPdf() {
+    const st = $('#pdf-status'), say = (msg, err) => { st.hidden = !msg; st.textContent = msg || ''; st.classList.toggle('err', !!err); };
+    if (!window.jspdf) return say('La libreria per creare il PDF non è stata caricata: controlla la connessione e ricarica la pagina.', true);
+    say('Preparazione del PDF…');
+    try {
+      const doc = await buildPdf(), name = 'Relazione acustica' + (state.client ? ' - ' + state.client.replace(/[\\/:*?"<>|]/g, '') : '') + '.pdf';
+      if (window.claude) {
+        const dl = await window.claude.use('downloads');
+        if (!dl) return say('Il download non è disponibile in questa vista.', true);
+        await dl.save({ filename: name, data: doc.output('blob') });
+      } else doc.save(name);
+      say('PDF scaricato: ' + name); state.touched.pdf = true; renderGuide(); save();
+    } catch (e) { say(e && e.code === 'declined' ? 'Download annullato.' : 'Non è stato possibile creare il PDF' + (e && e.message ? ': ' + e.message : '') + '.', true); }
+  }
+
+  /* ---------- Eventi ---------- */
+  function init() {
+    $('#mats').innerHTML = AC.SURFACES.map((s) => `<label>${s.name}<select id="mat-${s.id}" data-mat="${s.id}">${Object.keys(AC.MATERIALS).map((k) => `<option value="${k}">${AC.MATERIALS[k].name}</option>`).join('')}</select></label>`).join('');
+    $('#use').innerHTML = AC.USES.map((u) => `<option value="${u.id}">${u.name}</option>`).join('');
+    $('#decay-band').innerHTML = '<option value="-1">Banda larga</option>' + AC.BANDS.map((b, i) => `<option value="${i}">${bandLabel(b)}</option>`).join('');
+    $('#mic-type').innerHTML = AC.MICS.map((m) => `<option value="${m.id}">${m.name}</option>`).join('');
+    $('#mic-type').value = state.mic.type; $('#mic-model').value = state.mic.model; $('#rep-client').value = state.client; $('#rep-project').value = state.project;
+    $('#preset').innerHTML += AC.PRESETS.map((x) => `<option value="${x.id}">${x.name}</option>`).join('');
+    bind3D($('#view3d')); bind3D($('#view3d-b'));
+    const fill = () => {
+      $$('[data-k]').forEach((i) => { i.value = state.room[i.dataset.k]; });
+      $$('[data-mat]').forEach((i) => { i.value = state.room.mats[i.dataset.mat]; });
+      $$('[data-pos]').forEach((i) => { const [a, b] = i.dataset.pos.split('.'); i.value = state.room[a][b]; });
+      $('#use').value = state.use; $('#decay-band').value = state.decayBand; $('#etc-range').value = state.etcRange;
+    };
+    fill(); buildProducts();
+    const clampPos = () => { const r = state.room, d = [r.L, r.W, r.H]; for (const k of ['src', 'mic']) r[k] = r[k].map((v, i) => Math.min(d[i] - 0.05, Math.max(0.05, v))); };
+    document.addEventListener('input', (ev) => {
+      const t = ev.target, v = parseFloat(t.value);
+      if (t.dataset.k) { if (!(v >= 0) || (['L', 'W', 'H'].includes(t.dataset.k) && v < 1)) return; state.room[t.dataset.k] = v; clampPos(); state.touched[['L', 'W', 'H'].includes(t.dataset.k) ? 'dims' : 'mats'] = true; }
+      else if (t.dataset.pos) { if (!(v >= 0)) return; const [a, b] = t.dataset.pos.split('.'); state.room[a][b] = v; clampPos(); state.touched.pos = true; }
+      else if (t.dataset.price) state.treat.prices[t.dataset.price] = v >= 0 ? v : 0;
+      else if (t.dataset.area) { state.treat.areas[t.dataset.area] = v >= 0 ? v : 0; state.touched.treat = true; }
+      else if (t.dataset.cap != null) { state.photos[+t.dataset.cap].caption = t.value; return; }
+      else if (t.id === 'target') state.target = v >= 0.15 ? v : null;
+      else if (t.id === 'mic-model') state.mic.model = t.value;
+      else if (t.id === 'rep-client') state.client = t.value;
+      else if (t.id === 'rep-project') state.project = t.value;
+      else return;
+      renderAll();
+    });
+    document.addEventListener('change', (ev) => {
+      const t = ev.target;
+      if (t.dataset.mat) { state.room.mats[t.dataset.mat] = t.value; state.touched.mats = true; }
+      else if (t.id === 'preset') { const pz = AC.PRESETS.find((x) => x.id === t.value); if (!pz) return; state.room.mats = Object.assign({}, pz.mats); state.touched.mats = true; fill(); }
+      else if (t.dataset.en) state.treat.enabled[t.dataset.en] = t.checked;
+      else if (t.id === 'use') { state.use = t.value; state.target = null; }
+      else if (t.id === 'mic-type') state.mic.type = t.value;
+      else if (t.id === 'etc-range') state.etcRange = +t.value;
+      else if (t.id === 'decay-band') state.decayBand = +t.value;
+      else if (t.id === 'photo-file') { for (const file of t.files) state.photos.push({ url: URL.createObjectURL(file), caption: '' }); t.value = ''; }
+      else if (t.id === 'audio-file') { if (t.files[0]) doFile(t.files[0]); t.value = ''; return; }
+      else if (t.id === 'scan-file' || t.id === 'scan-up') {
+        const file = $('#scan-file').files[0], info = $('#scan-info');
+        if (!file) return;
+        const read = /\.zip$/i.test(file.name)
+          ? (window.JSZip ? window.JSZip.loadAsync(file).then((z) => { const e = Object.values(z.files).find((x) => /\.obj$/i.test(x.name) && !/__MACOSX/.test(x.name)); if (!e) throw new Error('Nello ZIP non c\'è nessun file OBJ.'); return e.async('string'); }) : Promise.reject(new Error('Lettore ZIP non caricato.')))
+          : file.text();
+        info.hidden = false; info.textContent = 'Lettura della scansione…';
+        read.then((txt) => {
+          const sc = AC.parseOBJ(txt, $('#scan-up').value);
+          state.scan = sc; Object.assign(state.room, { L: sc.L, W: sc.W, H: sc.H }); Object.assign(state.room, AC.recommendPositions(state.room)); state.touched.dims = true;
+          if (!state.touched.treat) { state.treat.areas = AC.propose(state.room, current().t, AC.targetCurve(targetMid()), state.treat.enabled, state.treat.prices); syncProducts(); }
+          fill();
+          info.textContent = `${file.name}: ${sc.vertices.toLocaleString('it-IT')} vertici. Stanza rilevata: ${f(sc.L)} × ${f(sc.W)} × ${f(sc.H)} m` + (sc.meshVolume > 0.5 * sc.L * sc.W * sc.H && sc.meshVolume < 1.2 * sc.L * sc.W * sc.H ? `, volume della mesh ${f(sc.meshVolume, 1)} m³` : '') + '. Confronta con la vista 3D: se la scansione include altri locali o oggetti esterni, correggi le misure a mano.';
+          renderAll();
+        }).catch((e) => { info.hidden = false; info.textContent = 'Scansione non leggibile: ' + e.message + ' Esporta in OBJ, con unità in metri.'; });
+        return;
+      } else return;
+      renderAll();
+    });
+    $$('.steps button').forEach((b) => b.addEventListener('click', () => {
+      $$('.steps button').forEach((x) => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
+      $$('.step').forEach((sec) => { sec.hidden = sec.id !== 's-' + b.dataset.step; });
+      renderAll();
+    }));
+    $('#btn-sweep').addEventListener('click', () => doMeasure('sweep'));
+    $('#btn-clap').addEventListener('click', () => doMeasure('impulse'));
+    $('#btn-play').addEventListener('click', doPlay);
+    document.addEventListener('click', (ev) => {
+      const g = ev.target.closest('[data-go]'); if (g) return goStep(g.dataset.go);
+      const b = ev.target.closest('[data-rec]'); if (!b) return;
+      const rec = recs.find((x) => String(x.id) === b.dataset.id); if (!rec) return;
+      if (b.dataset.rec === 'an') analyzeRec(rec).catch((e) => status('Analisi non riuscita: ' + e.message, true));
+      else if (b.dataset.rec === 'dl') saveWav(rec);
+      else { recs = recs.filter((x) => x !== rec); renderRecs(); idbDo('readwrite', (st) => st.delete(rec.id)); }
+    });
+    idbDo('readonly', (st) => st.getAll()).then((all) => { recs = (all || []).sort((a, b) => b.id - a.id); renderRecs(); });
+    const fb = $('#btn-file');
+    ['dragenter', 'dragover'].forEach((n) => fb.addEventListener(n, (e) => { e.preventDefault(); fb.classList.add('drop'); }));
+    ['dragleave', 'drop'].forEach((n) => fb.addEventListener(n, (e) => { e.preventDefault(); fb.classList.remove('drop'); }));
+    fb.addEventListener('drop', (e) => { const file = e.dataTransfer && e.dataTransfer.files[0]; if (file) doFile(file); });
+    $('#btn-demo').addEventListener('click', () => doDemo(false));
+    $('#btn-propose').addEventListener('click', () => {
+      state.treat.areas = AC.propose(state.room, current().t, AC.targetCurve(targetMid()), state.treat.enabled, state.treat.prices);
+      state.touched.treat = true; syncProducts(); renderAll();
+    });
+    $('#btn-recpos').addEventListener('click', () => { Object.assign(state.room, AC.recommendPositions(state.room)); state.touched.pos = true; fill(); renderAll(); });
+    $('#btn-pdf').addEventListener('click', downloadPdf);
+    if (window.claude) { // pagina pubblicata: niente microfono dal vivo
+      $('#live-note').hidden = false; $('#btn-sweep').hidden = true; $('#btn-clap').hidden = true; $('#btn-play').hidden = false;
+    }
+    let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(renderAll, 150); });
+    doDemo(true);
+    if (!Object.keys(state.treat.areas).length) state.treat.areas = AC.propose(state.room, current().t, AC.targetCurve(targetMid()), state.treat.enabled, state.treat.prices);
+    syncProducts(); renderAll();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+</body>
+</html>
