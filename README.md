@@ -11,7 +11,7 @@ Misura, analisi e progetto del trattamento fonoassorbente di un ambiente: geomet
 
 ## App desktop
 
-Gli installer vengono costruiti da GitHub Actions (workflow **App desktop**): a mano dalla scheda Actions, oppure pubblicando un tag `v*`, che crea anche la release con i file.
+Gli installer vengono costruiti da GitHub Actions (workflow **App desktop**) e allegati alla release ogni volta che se ne pubblica una. Si possono rigenerare a mano dalla scheda Actions indicando il tag della release, oppure scrivendo il tag nel file `.github/release-tag`.
 
 In locale:
 

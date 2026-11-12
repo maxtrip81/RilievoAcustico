@@ -1,14 +1,27 @@
 name: App desktop
 
-# Costruisce gli installer per macOS, Windows e Linux.
-# Parte a mano (Actions → App desktop → Run workflow) oppure quando si pubblica un tag v*.
+# Costruisce gli installer per macOS, Windows e Linux e li allega alla release.
+# Parte da solo quando si pubblica una release o un tag, a mano dalla scheda Actions
+# (indicando il tag della release), oppure quando cambia il file .github/release-tag.
 on:
-  workflow_dispatch:
+  release:
+    types: [published]
   push:
-    tags: ['v*']
+    tags: ['*']
+    branches: [main]
+    paths: ['.github/release-tag']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag della release a cui allegare gli installer (vuoto = solo pacchetti scaricabili)
+        required: false
 
 permissions:
   contents: write
+
+concurrency:
+  group: desktop-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -36,9 +49,21 @@ jobs:
             release/*.exe
             release/*.AppImage
           if-no-files-found: error
-      - if: startsWith(github.ref, 'refs/tags/v')
+      - id: tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          tag="$RELEASE_TAG"
+          if [ -z "$tag" ]; then tag="$INPUT_TAG"; fi
+          if [ -z "$tag" ] && [ "$GITHUB_REF_TYPE" = "tag" ]; then tag="$GITHUB_REF_NAME"; fi
+          if [ -z "$tag" ] && [ "$GITHUB_EVENT_NAME" = "push" ] && [ -f .github/release-tag ]; then tag="$(tr -d '[:space:]' < .github/release-tag)"; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - if: steps.tag.outputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
           files: |
             release/*.dmg
             release/*.exe
