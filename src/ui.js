@@ -17,19 +17,19 @@
     },
     use: 'riunioni', target: null, scan: null, meas: null, photos: [],
     treat: { areas: {}, enabled: Object.fromEntries(AC.PRODUCTS.map((p) => [p.id, !['mel50', 'curtain', 'carpet', 'ceil'].includes(p.id)])), prices: {} },
-    etcRange: 60, decayBand: 3, mic: { type: 'iphone', model: '' }, client: '', project: '', touched: {}, view: { yaw: -0.6, pitch: 0.5 },
+    etcRange: 60, decayBand: 3, mic: { type: 'iphone', model: '' }, client: '', project: '', touched: {}, view: { yaw: -0.6, pitch: 0.5 }, frSmooth: 6, cal: 120, calibrated: false,
   };
   try {
     const saved = JSON.parse(localStorage.getItem('rilievo-acustico.v1') || 'null');
-    if (saved && saved.room && saved.room.mats) { Object.assign(state.room, saved.room); state.use = saved.use || state.use; state.target = saved.target || null; Object.assign(state.treat, saved.treat || {}); Object.assign(state.mic, saved.mic || {}); state.client = saved.client || ''; state.touched = saved.touched || {}; state.project = saved.project || ''; }
+    if (saved && saved.room && saved.room.mats) { Object.assign(state.room, saved.room); state.use = saved.use || state.use; state.target = saved.target || null; Object.assign(state.treat, saved.treat || {}); Object.assign(state.mic, saved.mic || {}); state.client = saved.client || ''; state.touched = saved.touched || {}; if (saved.cal) { state.cal = saved.cal; state.calibrated = !!saved.calibrated; } state.project = saved.project || ''; }
   } catch (e) { /* archivio non disponibile */ }
-  const save = () => { try { localStorage.setItem('rilievo-acustico.v1', JSON.stringify({ room: state.room, use: state.use, target: state.target, treat: state.treat, mic: state.mic, client: state.client, project: state.project, touched: state.touched })); } catch (e) { /* idem */ } };
+  const save = () => { try { localStorage.setItem('rilievo-acustico.v1', JSON.stringify({ room: state.room, use: state.use, target: state.target, treat: state.treat, mic: state.mic, client: state.client, project: state.project, touched: state.touched, cal: state.cal, calibrated: state.calibrated })); } catch (e) { /* idem */ } };
 
   /* ---------- Grafico a linee con tooltip ---------- */
   let chartId = 0;
   function drawChart(el, o) {
     const W = Math.max(280, el.clientWidth || 640), H = o.h || 260, m = { l: 46, r: 14, t: 26, b: 40 };
-    const X = (v) => m.l + ((v - o.x.min) / (o.x.max - o.x.min)) * (W - m.l - m.r);
+    const tx = o.x.log ? Math.log : (v) => v, X = (v) => m.l + ((tx(v) - tx(o.x.min)) / (tx(o.x.max) - tx(o.x.min))) * (W - m.l - m.r);
     const Y = (v) => m.t + ((o.y.max - v) / (o.y.max - o.y.min)) * (H - m.t - m.b);
     const id = 'clip' + ++chartId;
     let s = '';
@@ -39,7 +39,8 @@
     }
     s += `<svg width="${W}" height="${H}" role="img" aria-label="${esc(o.label)}"><defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}"/></clipPath></defs>`;
     for (const t of o.y.ticks) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${m.l - 6}" y="${Y(t) + 4}" text-anchor="end">${String(t).replace('.', ',')}</text>`;
-    for (const t of o.x.ticks) s += `<text x="${X(t.v)}" y="${H - m.b + 16}" text-anchor="middle">${esc(t.l)}</text>`;
+    for (const t of o.x.ticks) s += `<text x="${X(t.v)}" y="${H - m.b + 16}" text-anchor="middle">${esc(t.l)}</text>` + (o.x.log ? `<line x1="${X(t.v)}" x2="${X(t.v)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--line)" stroke-width="1"/>` : '');
+    for (const v of o.vlines || []) s += `<line x1="${X(v)}" x2="${X(v)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--s2)" stroke-width="1" stroke-dasharray="2 3"/>`;
     s += `<line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" stroke="var(--line-strong)" stroke-width="1"/>`;
     s += `<text x="${(m.l + W - m.r) / 2}" y="${H - 6}" text-anchor="middle">${esc(o.x.title)}</text><text x="12" y="11">${esc(o.y.title)}</text>`;
     s += `<g clip-path="url(#${id})">`;
@@ -60,7 +61,7 @@
     const move = (ev) => {
       const r = svg.getBoundingClientRect(), px = ev.clientX - r.left;
       if (px < m.l || px > W - m.r) return leave();
-      const xv = o.x.min + ((px - m.l) / (W - m.l - m.r)) * (o.x.max - o.x.min);
+      const fr0 = (px - m.l) / (W - m.l - m.r), xv = o.x.log ? o.x.min * Math.pow(o.x.max / o.x.min, fr0) : o.x.min + fr0 * (o.x.max - o.x.min);
       let rows = '', xs = null;
       for (const q of o.series) {
         let best = q.pts[0];
@@ -297,7 +298,7 @@
     $('#tot-area').textContent = f(tot.area, 1); $('#tot-cnt').textContent = tot.cnt || '—'; $('#tot-cost').textContent = Math.round(tot.cost).toLocaleString('it-IT') + ' €';
     const ok = after.every((t, b) => t <= tTar[b] * 1.2 && t >= tTar[b] * 0.8 * (b ? 1 : 0.8));
     const tile = (label, val, unit, sub) => `<div class="tile"><span>${label}</span><b>${val}<small>${unit}</small></b><em>${sub}</em></div>`;
-    $('#treat-tiles').innerHTML = tile('RT60 attuale', f(mid(cur.t)), 's', '500–1000 Hz') + tile('RT60 previsto', f(mid(after)), 's', ok ? 'entro la tolleranza' : mid(after) > tm ? 'sopra l\'obiettivo' : 'fuori tolleranza') +
+    $('#treat-tiles').innerHTML = tile('RT60 attuale', f(mid(cur.t)), 's', '500–1000 Hz') + tile('RT60 dopo l\'intervento', f(mid(after)), 's', ok ? 'entro l\'obiettivo di ' + f(tm) + ' s' : mid(after) > tm ? 'sopra l\'obiettivo di ' + f(tm) + ' s' : 'sotto l\'obiettivo di ' + f(tm) + ' s').replace('class="tile"', 'class="tile ' + (ok ? 'ok' : 'bad') + '"') +
       tile('Superficie trattata', f(tot.area, 1), 'm²', `${tot.cnt} pannelli 120 × 60 cm`) + tile('Costo materiali', Math.round(tot.cost).toLocaleString('it-IT'), '€', 'prezzi indicativi, posa esclusa');
     const adv = advice(cur, after, tTar, tot);
     $('#advice').innerHTML = adv.map((a) => `<li>${a}</li>`).join('');
@@ -331,7 +332,12 @@
   }
 
   let lastT = null;
-  function renderAll() { save(); renderGuide(); renderRoom(); render3D(); renderMic(); renderMeas(); lastT = renderTreat(); renderReport(lastT); }
+  function autoPropose() {
+    if (state.touched.manual) return;
+    state.treat.areas = AC.propose(state.room, current().t, AC.targetCurve(targetMid()), state.treat.enabled, state.treat.prices);
+    for (const pr of AC.PRODUCTS) { const el = $('#ar-' + pr.id); if (el && document.activeElement !== el) el.value = state.treat.areas[pr.id] || 0; }
+  }
+  function renderAll() { save(); renderGuide(); renderRoom(); autoPropose(); render3D(); renderMic(); renderMeas(); renderLab(); lastT = renderTreat(); renderVerdict(lastT); renderReport(lastT); }
 
   /* ---------- Vista 3D ---------- */
   function draw3D(cv, withPanels) {
@@ -393,17 +399,87 @@
   /* ---------- Percorso guidato ---------- */
   const goStep = (id) => { const b = $(`.steps button[data-step="${id}"]`); if (b) b.click(); };
   function renderGuide() {
-    const t = state.touched, items = [
-      ['room', 'Geometria', !!(state.scan || t.dims), 'Carica la scansione LiDAR oppure inserisci lunghezza, larghezza e altezza.'],
-      ['room', 'Materiali', !!t.mats, 'Scegli le finiture tipiche, poi vetrate, porte e sedie.'],
-      ['meas', 'Posizioni', !!t.pos, 'Premi «Usa le posizioni consigliate» e sistema microfono e sorgente come in pianta.'],
-      ['meas', 'Misura', !!(state.meas && state.meas.real), 'Premi «Avvia la misura» e resta in silenzio fino alla fine.'],
-      ['treat', 'Intervento', !!t.treat, 'Scegli la destinazione d\'uso e premi «Proponi l\'intervento».'],
-      ['report', 'Relazione', !!t.pdf, 'Inserisci il cliente e scarica il PDF.'],
-    ];
-    const next = items.findIndex((x) => !x[2]);
-    $('#guide-list').innerHTML = items.map((x, i) => `<button type="button" data-go="${x[0]}" class="${x[2] ? 'done' : i === next ? 'next' : ''}"><span class="pill ${x[2] ? 'good' : i === next ? 'warn' : ''}"><i></i>${x[2] ? 'Fatto' : i === next ? 'Prossimo passo' : 'Da fare'}</span><b>${i + 1}. ${x[1]}</b>${x[3]}</button>`).join('');
-    $('#guide-note').textContent = next < 0 ? 'Analisi completa.' : next === 0 && !state.touched.dims ? 'I dati mostrati sono un esempio: sostituiscili seguendo i passi.' : `${items.filter((x) => x[2]).length} passi su ${items.length} completati`;
+    const real = !!(state.meas && state.meas.real), done = { room: !!(state.scan || state.touched.dims), meas: real, treat: real && !!state.touched.seen, report: !!state.touched.pdf };
+    $$('.steps button').forEach((b) => b.classList.toggle('done', !!done[b.dataset.step]));
+  }
+  function renderVerdict(t) {
+    const real = state.meas && state.meas.real, use = AC.USES.find((u) => u.id === state.use).name.toLowerCase(), cur = mid(t.cur.t);
+    const need = t.cur.t.some((v, b) => v > t.tTar[b] * 1.2);
+    $('#verdict').innerHTML = (real ? '' : '<span class="tag">Esempio simulato</span> ') + `Riverbero ${real ? 'misurato' : 'stimato'}: <b>${f(cur)} s</b>. Per ${esc(use)} di ${f(geo().V, 0)} m³ l'obiettivo è <b>${f(t.tm)} s</b>. ` +
+      (need ? `Servono circa <b>${f(t.tot.area, 0)} m²</b> di materiale fonoassorbente${t.tot.cnt ? ` (${t.tot.cnt} pannelli)` : ''}.` : 'La stanza è già entro l\'obiettivo.');
+  }
+
+  /* ---------- Analisi dettagliata ---------- */
+  function renderLab() {
+    const m = state.meas, r = state.room;
+    const modes = AC.roomModes(r, 200), fs0 = AC.schroeder(r, mid(current().t));
+    $('#modes-note').textContent = `frequenza di Schroeder ${f(fs0, 0)} Hz: sotto questa soglia dominano le risonanze`;
+    $('#modes-table').innerHTML = '<tr><th class="n">Frequenza</th><th>Tipo</th><th>Direzione (lunghezza, larghezza, altezza)</th><th>Dove si accumula</th></tr>' +
+      modes.slice(0, 14).map((x) => `<tr><td class="n">${f(x.f, 1)} Hz</td><td>${x.type}</td><td>${x.n.join(' · ')}</td><td>${x.type === 'assiale' ? (x.n[0] ? 'pareti frontale e di fondo' : x.n[1] ? 'pareti laterali' : 'pavimento e soffitto') : 'angoli e spigoli'}</td></tr>`).join('');
+    if (!m) return;
+    const res = m.res;
+    if (!m._fr || m._frS !== state.frSmooth) { m._fr = AC.freqResponse(res.ir, res.fs, state.frSmooth); m._frS = state.frSmooth; }
+    const abs = m.kind === 'sweep' && state.calibrated;
+    let off = abs ? 20 * Math.log10(0.8 / Math.SQRT2) + state.cal : -Math.max.apply(null, m._fr.filter((q) => q[0] > 100 && q[0] < 10000).map((q) => q[1]));
+    const pts = m._fr.map((q) => [q[0], q[1] + off]), top = Math.ceil(Math.max.apply(null, pts.map((q) => q[1])) / 10) * 10 + 10, yt = [];
+    for (let v = top; v >= top - 70; v -= 10) yt.push(v);
+    $('#fr-note').textContent = (abs ? 'Livello al microfono durante lo sweep, calibrato sul fonometro di riferimento.' : m.kind === 'sweep' ? 'Curva in dB relativi al massimo. Per leggere i dB SPL calibra il microfono con il fonometro in fondo a questa pagina.' : 'Misura a impulso: curva in dB relativi al massimo. Per i dB SPL serve la misura con lo sweep e il microfono calibrato.') + ' Le linee tratteggiate sono i modi assiali della stanza.';
+    drawChart($('#fr-chart'), {
+      label: 'Risposta in frequenza', h: 300, unit: abs ? 'dB SPL' : 'dB',
+      x: { log: true, min: 20, max: Math.min(20000, res.fs / 2.2), title: 'Frequenza (Hz)', ticks: [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000].filter((v) => v <= res.fs / 2.2).map((v) => ({ v, l: v >= 1000 ? v / 1000 + 'k' : String(v) })), fmt: (x) => f(x, 0) + ' Hz' },
+      y: { min: top - 70, max: top, title: abs ? 'SPL (dB)' : 'Livello (dB)', ticks: yt },
+      series: [{ name: abs ? 'SPL' : 'Livello', color: '--s1', pts }], vlines: modes.filter((x) => x.type === 'assiale').map((x) => x.f),
+    });
+    if (!m._sp) m._sp = AC.spectrogram(res.ir, res.fs, res.i0, Math.min(0.8, Math.max(0.25, res.broad.tc)));
+    const cv = $('#waterfall'), W = cv.clientWidth || 640, H = 280, dpr = window.devicePixelRatio || 1, sp = m._sp, ml = 46, mb = 24;
+    cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + 'px';
+    const ctx = cv.getContext('2d'), cs = getComputedStyle(document.documentElement); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const nb = sp.edges.length - 1, cw = (W - ml - 8) / nb, chh = (H - mb - 8) / sp.z.length;
+    ctx.fillStyle = cs.getPropertyValue('--s1').trim();
+    sp.z.forEach((row, t) => row.forEach((v, b) => { const a = Math.max(0, Math.min(1, (v + 60) / 60)); if (a > 0.02) { ctx.globalAlpha = a; ctx.fillRect(ml + b * cw, 8 + t * chh, cw + 0.6, chh + 0.6); } }));
+    ctx.globalAlpha = 1; ctx.fillStyle = cs.getPropertyValue('--muted').trim(); ctx.font = '11px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+    const f0 = sp.edges[0], f1 = sp.edges[nb];
+    for (const v of [100, 200, 500, 1000, 2000, 5000, 10000]) if (v < f1) ctx.fillText(v >= 1000 ? v / 1000 + 'k' : v, ml + (Math.log(v / f0) / Math.log(f1 / f0)) * (W - ml - 8), H - 7);
+    ctx.textAlign = 'right';
+    for (let ms = 0; ms <= sp.z.length * sp.dt * 1000; ms += 100) ctx.fillText(ms + ' ms', ml - 6, 12 + (ms / 1000 / sp.dt) * chh);
+  }
+
+  /* ---------- Fonometro e analizzatore in tempo reale ---------- */
+  let spl = null, splRaw = null;
+  const splTiles = (a, eq, mx, z) => { const t = (l, v, sub) => `<div class="tile"><span>${l}</span><b>${v != null && v < 0 ? '—' : v}<small>dB</small></b><em>${sub}</em></div>`; $('#spl-tiles').innerHTML = t('Livello attuale', a < 0 ? '—' : f(a, 1), 'ponderazione A') + t('Leq', f(eq, 1), 'media dall\'avvio, A') + t('Massimo', f(mx, 1), 'ponderazione A') + t('Lineare', z < 0 ? '—' : f(z, 1), 'senza ponderazione'); };
+  function drawRta(bands) {
+    const cv = $('#rta'), W = cv.clientWidth || 640, H = 220, dpr = window.devicePixelRatio || 1, cs = getComputedStyle(document.documentElement);
+    cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + 'px';
+    const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const ml = 36, mb = 22, top = 100, bot = 10, bw = (W - ml - 8) / bands.length, Y = (v) => 8 + ((top - Math.max(bot, Math.min(top, v))) / (top - bot)) * (H - mb - 8);
+    ctx.font = '11px Inter, system-ui, sans-serif'; ctx.strokeStyle = cs.getPropertyValue('--line').trim(); ctx.fillStyle = cs.getPropertyValue('--muted').trim(); ctx.textAlign = 'right';
+    for (let v = 20; v <= 100; v += 20) { ctx.beginPath(); ctx.moveTo(ml, Y(v)); ctx.lineTo(W - 8, Y(v)); ctx.stroke(); ctx.fillText(v, ml - 6, Y(v) + 4); }
+    ctx.textAlign = 'center';
+    AC.THIRDS.forEach((fc, i) => { if (i % 3 === 1) ctx.fillText(fc >= 1000 ? Math.round(fc / 100) / 10 + 'k' : Math.round(fc), ml + (i + 0.5) * bw, H - 7); });
+    ctx.fillStyle = cs.getPropertyValue('--s1').trim();
+    bands.forEach((v, i) => { const y = Y(v); ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(ml + i * bw + 1, y, Math.max(1, bw - 2), H - mb - y, [3, 3, 0, 0]); else ctx.rect(ml + i * bw + 1, y, Math.max(1, bw - 2), H - mb - y); ctx.fill(); });
+  }
+  async function toggleSpl() {
+    const btn = $('#btn-spl'), note = $('#spl-note');
+    if (spl) { clearInterval(spl.timer); spl.stream.getTracks().forEach((t) => t.stop()); spl.ctx.close(); spl = null; btn.textContent = 'Avvia'; return; }
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nomic');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const ctx = new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume();
+      const an = ctx.createAnalyser(); an.fftSize = 8192; an.smoothingTimeConstant = 0; ctx.createMediaStreamSource(stream).connect(an);
+      const buf = new Float32Array(an.frequencyBinCount), df = ctx.sampleRate / an.fftSize, aw = Array.from(buf, (_, k) => Math.pow(10, AC.aWeight(Math.max(1, k * df)) / 10));
+      let eSum = 0, n = 0, mx = -Infinity;
+      const tick = () => {
+        an.getFloatFrequencyData(buf);
+        let pa = 0, pz = 0; const bands = new Float64Array(AC.THIRDS.length);
+        for (let k = 1; k < buf.length; k++) { const fq = k * df; if (fq < 20 || fq > 20000) continue; const pw = Math.pow(10, buf[k] / 10); pz += pw; pa += pw * aw[k]; const bi = Math.round(10 * Math.log10(fq)) - 14; if (bi >= 0 && bi < bands.length) bands[bi] += pw; }
+        splRaw = 10 * Math.log10(pa + 1e-30); const la = splRaw + state.cal; eSum += Math.pow(10, la / 10); n++; mx = Math.max(mx, la);
+        splTiles(la, 10 * Math.log10(eSum / n), mx, 10 * Math.log10(pz + 1e-30) + state.cal);
+        drawRta(Array.from(bands, (v) => 10 * Math.log10(v + 1e-30) + state.cal));
+      };
+      spl = { stream, ctx, timer: setInterval(tick, 150) }; btn.textContent = 'Ferma';
+      note.textContent = state.calibrated ? 'Fonometro calibrato sul riferimento inserito.' : 'Non calibrato: i valori sono indicativi. Per calibrare, leggi il livello su un fonometro vero mentre c\'è un rumore costante, scrivilo qui sotto e premi «Calibra».';
+    } catch (e) { note.textContent = 'Il microfono non è accessibile da questa pagina: il fonometro funziona nella versione dell\'app aperta da un indirizzo https.'; }
   }
 
   /* ---------- Misura: acquisizione ---------- */
@@ -412,13 +488,14 @@
   const later = (fn) => new Promise((res, rej) => setTimeout(() => { try { res(fn()); } catch (e) { rej(e); } }, 40));
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   window.__buildPdf = () => buildPdf();
-  function setMeas(res, label, extra) {
-    state.meas = { res, label, real: true };
+  function setMeas(res, label, extra, kind) {
+    state.meas = { res, label, real: true, kind }; state.touched.manual = false;
     const tail = extra ? ' ' + extra : '';
     if (res.broad.inr < 25) status('Segnale troppo debole rispetto al rumore di fondo: alza il volume, avvicina la sorgente o ripeti in silenzio.' + tail, true);
     else if (res.bands.some((b) => !b.rt)) status('Misura acquisita. Nelle bande senza dinamica sufficiente il calcolo dell\'intervento usa il modello dei materiali.' + tail);
     else status('Misura acquisita e analizzata.' + tail);
     renderAll();
+    if (res.broad.inr >= 25) goStep('treat');
   }
   // archivio delle registrazioni nel browser (IndexedDB)
   let recs = [];
@@ -447,12 +524,12 @@
   async function analyzeRec(rec, extra) {
     status('Analisi di ' + rec.name + '…');
     const out = await later(() => {
-      if (rec.kind === 'sweep') return { res: AC.analyze(Float32Array.from(AC.deconvolve(rec.data, AC.testSweep(rec.fs))), rec.fs), label: 'Sweep misurato' };
+      if (rec.kind === 'sweep') return { res: AC.analyze(Float32Array.from(AC.deconvolve(rec.data, AC.testSweep(rec.fs))), rec.fs), label: 'Sweep misurato', kind: 'sweep' };
       if (rec.kind === 'impulse') return { res: AC.analyze(rec.data, rec.fs), label: 'Impulso misurato' };
       const a = AC.autoIR(rec.data, rec.fs);
-      return { res: AC.analyze(a.ir, rec.fs), label: (a.kind === 'sweep' ? 'Sweep da file' : 'Impulso da file') };
+      return { res: AC.analyze(a.ir, rec.fs), label: (a.kind === 'sweep' ? 'Sweep da file' : 'Impulso da file'), kind: a.kind };
     });
-    setMeas(out.res, out.label, extra);
+    setMeas(out.res, out.label, extra, out.kind);
   }
   const stamp = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
   async function record(seconds, withSweep, msg) {
@@ -533,7 +610,7 @@
     let y = M;
     const need = (h) => { if (y + h > PH - 20) { doc.addPage(); y = M; } };
     const font = (b, size, col) => { doc.setFont('helvetica', b ? 'bold' : 'normal'); doc.setFontSize(size); const c = col || [16, 24, 28]; doc.setTextColor(c[0], c[1], c[2]); };
-    const h2 = (txt) => { need(18); y += 3; font(true, 10, [14, 96, 115]); doc.text(P(txt).toUpperCase(), M, y + 3); doc.setDrawColor(14, 96, 115); doc.setLineWidth(0.3); doc.line(M, y + 5, PW - M, y + 5); y += 9; };
+    const h2 = (txt) => { need(18); y += 4; doc.setFillColor(14, 96, 115); doc.rect(M, y - 0.4, 2.4, 4.4, 'F'); font(true, 11.5, [11, 53, 64]); doc.text(P(txt), M + 5, y + 3.3); doc.setDrawColor(219, 225, 228); doc.setLineWidth(0.2); doc.line(M, y + 6, PW - M, y + 6); y += 10; };
     const para = (txt, size, col) => { font(false, size || 9.5, col); for (const ln of doc.splitTextToSize(P(txt), CW)) { need(4.6); doc.text(ln, M, y + 3.2); y += 4.6; } y += 1.2; };
     const table = (rows, widths, o) => {
       o = o || {};
@@ -542,9 +619,10 @@
         font(head || (o.boldLast && ri === rows.length - 1) || (o.boldFirst && false), head ? 7.5 : 9, head ? [123, 134, 141] : null);
         const cells = row.map((c, i) => doc.splitTextToSize(P(head ? String(c).toUpperCase() : c), widths[i] * CW - 3));
         const h = Math.max.apply(null, cells.map((c) => c.length)) * 4.2 + 2.4; need(h);
+        if (!head && ri % 2 === (o.head === false ? 0 : 1)) { doc.setFillColor(246, 248, 249); doc.rect(M, y, CW, h, 'F'); }
         let x = M;
         cells.forEach((c, i) => { const right = (o.right || []).includes(i); if (o.keyCol && i === 0 && !head) font(false, 9, [71, 84, 92]); else if (!head) font(o.boldLast && ri === rows.length - 1, 9); doc.text(c, right ? x + widths[i] * CW - 1.5 : x + 1.5, y + 4.2, { align: right ? 'right' : 'left' }); x += widths[i] * CW; });
-        y += h; doc.setDrawColor(head ? 150 : 222); doc.setLineWidth(0.15); doc.line(M, y, PW - M, y);
+        y += h; if (head) { doc.setDrawColor(150); doc.setLineWidth(0.2); doc.line(M, y, PW - M, y); }
       });
       y += 3;
     };
@@ -552,10 +630,10 @@
     const chart = (o, h) => {
       need(h + 4);
       const x0 = M + 11, x1 = PW - M - 2, y0 = y + 6, y1 = y + h - 9;
-      const X = (v) => x0 + ((v - o.x.min) / (o.x.max - o.x.min)) * (x1 - x0), Y = (v) => y0 + ((o.y.max - Math.max(o.y.min, Math.min(o.y.max, v))) / (o.y.max - o.y.min)) * (y1 - y0);
+      const tx = o.x.log ? Math.log : (v) => v, X = (v) => x0 + ((tx(v) - tx(o.x.min)) / (tx(o.x.max) - tx(o.x.min))) * (x1 - x0), Y = (v) => y0 + ((o.y.max - Math.max(o.y.min, Math.min(o.y.max, v))) / (o.y.max - o.y.min)) * (y1 - y0);
       font(false, 7, [123, 134, 141]); doc.setLineWidth(0.1);
       for (const k of o.y.ticks) { doc.setDrawColor(226); doc.line(x0, Y(k), x1, Y(k)); doc.text(String(k).replace('.', ','), x0 - 1.5, Y(k) + 1, { align: 'right' }); }
-      for (const k of o.x.ticks) doc.text(P(k.l), X(k.v), y1 + 4, { align: 'center' });
+      for (const k of o.x.ticks) { doc.text(P(k.l), X(k.v), y1 + 4, { align: 'center' }); if (o.x.log) { doc.setDrawColor(226); doc.line(X(k.v), y0, X(k.v), y1); } }
       doc.text(P(o.x.title), (x0 + x1) / 2, y1 + 8, { align: 'center' }); doc.text(P(o.y.title), M, y + 2.5);
       let lx = M + 34;
       if (o.series.length > 1) for (const q of o.series) { const c = RGB[q.color]; doc.setFillColor(c[0], c[1], c[2]); doc.rect(lx, y + 1, 4, 1, 'F'); doc.text(P(q.name), lx + 5.5, y + 2.5); lx += 9 + doc.getTextWidth(P(q.name)); }
@@ -577,14 +655,29 @@
       y += h + 2;
     };
 
-    // intestazione
-    font(true, 20, [14, 96, 115]); doc.text(P(SIGN_ORG).toUpperCase(), M, y + 6);
-    font(false, 9, [71, 84, 92]); doc.text(P(SIGN_NAME), M, y + 11);
-    font(true, 14); doc.text('Relazione acustica', PW - M, y + 6, { align: 'right' });
-    font(false, 9, [71, 84, 92]); doc.text(today, PW - M, y + 11, { align: 'right' });
-    y += 15; doc.setDrawColor(16, 24, 28); doc.setLineWidth(0.5); doc.line(M, y, PW - M, y); y += 5;
-    const headRows = []; if (state.client) headRows.push(['Cliente', state.client]); if (state.project) headRows.push(['Ambiente', state.project]);
-    if (headRows.length) kv(headRows);
+    // intestazione: fascia di marca
+    doc.setFillColor(11, 53, 64); doc.rect(0, 0, PW, 34, 'F');
+    doc.setFillColor(127, 208, 222); doc.roundedRect(M, 9, 14, 14, 2.5, 2.5, 'F');
+    doc.setFillColor(11, 53, 64); [[2.6, 5.6, 2.6], [4.7, 3.6, 6.6], [6.8, 2, 10], [8.9, 4.4, 5], [11, 6, 1.8]].forEach((b) => doc.roundedRect(M + b[0], 9 + b[1], 1.2, b[2], 0.6, 0.6, 'F'));
+    font(true, 19, [242, 247, 248]); doc.text(P(SIGN_ORG).toUpperCase(), M + 19, 16.5);
+    font(false, 9, [159, 195, 204]); doc.text(P(SIGN_NAME), M + 19, 22);
+    font(true, 15, [242, 247, 248]); doc.text('Relazione acustica', PW - M, 16.5, { align: 'right' });
+    font(false, 9, [159, 195, 204]); doc.text([state.client, state.project, today].filter(Boolean).map(P).join('  ·  '), PW - M, 22, { align: 'right' });
+    y = 42;
+    // sintesi in quattro riquadri
+    const okAfter = t.after.every((v, b) => v <= t.tTar[b] * 1.2);
+    const boxes = [['RT60 attuale', f(mid(t.cur.t)) + ' s', state.meas && state.meas.real ? 'misurato, 500-1000 Hz' : 'stimato, 500-1000 Hz'], ['RT60 obiettivo', f(t.tm) + ' s', AC.USES.find((u) => u.id === state.use).name],
+      ['RT60 dopo l\'intervento', f(mid(t.after)) + ' s', okAfter ? 'entro la tolleranza' : 'da verificare'], ['Materiale', f(t.tot.area, 1) + ' m²', `${t.tot.cnt} pannelli · ${Math.round(t.tot.cost).toLocaleString('it-IT')} EUR`]];
+    const bwd = (CW - 9) / 4;
+    boxes.forEach((b, k) => {
+      const x = M + k * (bwd + 3);
+      doc.setFillColor(238, 242, 243); doc.roundedRect(x, y, bwd, 23, 2, 2, 'F');
+      if (k === 2) { doc.setFillColor(okAfter ? 27 : 235, okAfter ? 175 : 104, okAfter ? 122 : 52); doc.rect(x, y + 2, 1.2, 19, 'F'); }
+      font(false, 7.5, [69, 82, 90]); doc.text(P(b[0]).toUpperCase(), x + 4, y + 6);
+      font(true, 16); doc.text(P(b[1]), x + 4, y + 14.5);
+      font(false, 7.5, [123, 134, 141]); doc.text(doc.splitTextToSize(P(b[2]), bwd - 6)[0], x + 4, y + 19.5);
+    });
+    y += 29;
 
     h2('Ambiente');
     kv([['Dimensioni', `${f(r.L)} × ${f(r.W)} × ${f(r.H)} m`], ['Volume e superficie', `${f(g.V, 1)} m³ · ${f(g.S, 1)} m²`]]
@@ -597,6 +690,7 @@
       kv([['Metodo', m.label], ['Microfono', micLabel()], ['Posizione microfono (x; y; z)', r.mic.map((v) => f(v)).join('; ') + ' m'], ['Posizione sorgente (x; y; z)', r.src.map((v) => f(v)).join('; ') + ' m'],
         ['RT60 a 500-1000 Hz', f(res.rtMid) + ' s'], ['EDT', f(res.edtMid) + ' s'], ['C50 / D50', f(res.c50, 1) + ' dB / ' + f(res.d50 * 100, 0) + ' %'], ['Dinamica', f(res.broad.inr, 0) + ' dB'],
         ['Flutter echo', res.flutter ? `periodo ${f(res.flutter.periodMs, 0)} ms` : 'non rilevato']]);
+      if ($('#fr-chart')._opts) { need(88); h2('Risposta in frequenza'); chart($('#fr-chart')._opts, 62); para($('#fr-note').textContent, 8.5, [71, 84, 92]); }
       need(95); h2('Riflessioni ed echi');
       chart($('#etc-chart')._opts, 62);
       if (refl.length) table([['N.', 'Ritardo', 'Livello', 'Percorso in più', 'Superficie probabile', 'Valutazione']].concat(refl.map((x, i) => [i + 1, f(x.ms, 1) + ' ms', f(x.dB, 1) + ' dB', f(x.extra) + ' m', x.surface ? surfName(x.surface) : 'secondo ordine o arredo', KIND[x.kind][0]])), [0.07, 0.14, 0.14, 0.17, 0.26, 0.22], { right: [0, 1, 2, 3] });
@@ -615,7 +709,7 @@
         .concat([['Totale', '', f(t.tot.area, 1) + ' m²', Math.round(t.tot.cost).toLocaleString('it-IT') + ' EUR']]), [0.52, 0.16, 0.16, 0.16], { right: [2, 3], boldLast: true });
       para(`RT60 a 500-1000 Hz: da ${f(mid(t.cur.t))} s a ${f(mid(t.after))} s (obiettivo ${f(t.tm)} s). Prezzi dei materiali indicativi, posa esclusa.`, 9, [71, 84, 92]);
 
-      h2('Dove installare i pannelli');
+      need(150); h2('Dove installare i pannelli');
       const tw = r.L + 2 * r.H, th = r.W + 2 * r.H, sc = Math.min((CW - 12) / tw, 105 / th), ox = M + (CW - tw * sc) / 2;
       need(th * sc + 20); const oy = y + 5;
       const R = (q) => { const u = AC.unfold(r, q); return [ox + u[0] * sc, oy + u[1] * sc, u[2] * sc, u[3] * sc]; };
@@ -708,7 +802,7 @@
       if (t.dataset.k) { if (!(v >= 0) || (['L', 'W', 'H'].includes(t.dataset.k) && v < 1)) return; state.room[t.dataset.k] = v; clampPos(); state.touched[['L', 'W', 'H'].includes(t.dataset.k) ? 'dims' : 'mats'] = true; }
       else if (t.dataset.pos) { if (!(v >= 0)) return; const [a, b] = t.dataset.pos.split('.'); state.room[a][b] = v; clampPos(); state.touched.pos = true; }
       else if (t.dataset.price) state.treat.prices[t.dataset.price] = v >= 0 ? v : 0;
-      else if (t.dataset.area) { state.treat.areas[t.dataset.area] = v >= 0 ? v : 0; state.touched.treat = true; }
+      else if (t.dataset.area) { state.treat.areas[t.dataset.area] = v >= 0 ? v : 0; state.touched.manual = true; }
       else if (t.dataset.cap != null) { state.photos[+t.dataset.cap].caption = t.value; return; }
       else if (t.id === 'target') state.target = v >= 0.15 ? v : null;
       else if (t.id === 'mic-model') state.mic.model = t.value;
@@ -725,6 +819,7 @@
       else if (t.id === 'use') { state.use = t.value; state.target = null; }
       else if (t.id === 'mic-type') state.mic.type = t.value;
       else if (t.id === 'etc-range') state.etcRange = +t.value;
+      else if (t.id === 'fr-smooth') state.frSmooth = +t.value;
       else if (t.id === 'decay-band') state.decayBand = +t.value;
       else if (t.id === 'photo-file') { for (const file of t.files) state.photos.push({ url: URL.createObjectURL(file), caption: '' }); t.value = ''; }
       else if (t.id === 'audio-file') { if (t.files[0]) doFile(t.files[0]); t.value = ''; return; }
@@ -738,7 +833,6 @@
         read.then((txt) => {
           const sc = AC.parseOBJ(txt, $('#scan-up').value);
           state.scan = sc; Object.assign(state.room, { L: sc.L, W: sc.W, H: sc.H }); Object.assign(state.room, AC.recommendPositions(state.room)); state.touched.dims = true;
-          if (!state.touched.treat) { state.treat.areas = AC.propose(state.room, current().t, AC.targetCurve(targetMid()), state.treat.enabled, state.treat.prices); syncProducts(); }
           fill();
           info.textContent = `${file.name}: ${sc.vertices.toLocaleString('it-IT')} vertici. Stanza rilevata: ${f(sc.L)} × ${f(sc.W)} × ${f(sc.H)} m` + (sc.meshVolume > 0.5 * sc.L * sc.W * sc.H && sc.meshVolume < 1.2 * sc.L * sc.W * sc.H ? `, volume della mesh ${f(sc.meshVolume, 1)} m³` : '') + '. Confronta con la vista 3D: se la scansione include altri locali o oggetti esterni, correggi le misure a mano.';
           renderAll();
@@ -749,6 +843,9 @@
     });
     $$('.steps button').forEach((b) => b.addEventListener('click', () => {
       $$('.steps button').forEach((x) => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
+      if (b.dataset.step === 'treat') state.touched.seen = true;
+      if (b.dataset.step !== 'lab' && spl) toggleSpl();
+      window.scrollTo(0, 0);
       $$('.step').forEach((sec) => { sec.hidden = sec.id !== 's-' + b.dataset.step; });
       renderAll();
     }));
@@ -771,16 +868,24 @@
     $('#btn-demo').addEventListener('click', () => doDemo(false));
     $('#btn-propose').addEventListener('click', () => {
       state.treat.areas = AC.propose(state.room, current().t, AC.targetCurve(targetMid()), state.treat.enabled, state.treat.prices);
-      state.touched.treat = true; syncProducts(); renderAll();
+      state.touched.manual = false; syncProducts(); renderAll();
     });
     $('#btn-recpos').addEventListener('click', () => { Object.assign(state.room, AC.recommendPositions(state.room)); state.touched.pos = true; fill(); renderAll(); });
     $('#btn-pdf').addEventListener('click', downloadPdf);
+    $('#btn-spl').addEventListener('click', toggleSpl);
+    $('#btn-cal').addEventListener('click', () => {
+      const ref = parseFloat($('#cal-ref').value), note = $('#spl-note');
+      if (!spl || splRaw == null || splRaw < -110) { note.textContent = 'Avvia prima il fonometro, poi calibra mentre c\'è un rumore costante.'; return; }
+      if (!(ref > 20 && ref < 130)) { note.textContent = 'Scrivi il livello letto sul fonometro di riferimento, in dBA.'; return; }
+      state.cal = ref - splRaw; state.calibrated = true; note.textContent = 'Calibrato: da ora i livelli sono riferiti al fonometro.'; save(); renderLab();
+    });
+    $$('details').forEach((d) => d.addEventListener('toggle', () => renderAll()));
+    splTiles(null, null, null, null); drawRta(AC.THIRDS.map(() => 0));
     if (window.claude) { // pagina pubblicata: niente microfono dal vivo
       $('#live-note').hidden = false; $('#btn-sweep').hidden = true; $('#btn-clap').hidden = true; $('#btn-play').hidden = false;
     }
     let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(renderAll, 150); });
     doDemo(true);
-    if (!Object.keys(state.treat.areas).length) state.treat.areas = AC.propose(state.room, current().t, AC.targetCurve(targetMid()), state.treat.enabled, state.treat.prices);
     syncProducts(); renderAll();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

@@ -366,7 +366,7 @@ AC.analyze = function (x, fs) {
 
   const mid = [bands[2].rt, bands[3].rt].filter((v) => v != null);
   return {
-    fs, bands, broad, etc, reflections, flutter, c50, c80, d50,
+    fs, bands, broad, etc, reflections, flutter, c50, c80, d50, i0, ir: Float32Array.from(h.subarray(0, Math.min(h.length, Math.round(1.5 * fs)))),
     rtMid: mid.length ? mid.reduce((a, b) => a + b) / mid.length : broad.rt,
     edtMid: [bands[2].edt, bands[3].edt].filter((v) => v != null).reduce((a, b, _, arr) => a + b / arr.length, 0) || broad.edt,
   };
@@ -636,5 +636,61 @@ AC.PRESETS = [
   { id: 'industriale', name: 'Capannone / spazio in cemento', mats: { floor: 'cemento', ceiling: 'cemento', front: 'cemento', back: 'cemento', left: 'cemento', right: 'cemento' } },
   { id: 'studio', name: 'Sala con moquette e tende', mats: { floor: 'moquette', ceiling: 'intonaco', front: 'intonaco', back: 'tenda', left: 'intonaco', right: 'intonaco' } },
 ];
+
+/* ---------- Analisi in frequenza (stile REW) ---------- */
+/* Risposta in frequenza dalla risposta all'impulso, con lisciatura a frazione d'ottava. */
+AC.freqResponse = function (h, fs, frac) {
+  let n = AC.nextPow2(Math.min(h.length, Math.round(0.7 * fs))); if (n > h.length) n >>= 1;
+  const re = new Float64Array(n), im = new Float64Array(n), fade = Math.floor(n * 0.2);
+  for (let i = 0; i < n; i++) re[i] = h[i] * (i > n - fade ? 0.5 + 0.5 * Math.cos((Math.PI * (i - (n - fade))) / fade) : 1);
+  AC.fft(re, im, false);
+  const cs = new Float64Array(n / 2 + 1);
+  for (let k = 1; k <= n / 2; k++) cs[k] = cs[k - 1] + re[k] * re[k] + im[k] * im[k];
+  const at = (x) => { const i = Math.max(0, Math.min(n / 2 - 1, Math.floor(x))); return cs[i] + (cs[i + 1] - cs[i]) * (Math.max(0, Math.min(n / 2, x)) - i); };
+  const out = [], fmax = Math.min(20000, fs / 2.2), w = Math.pow(2, 1 / (2 * (frac || 6))), df = fs / n;
+  for (let f = 20; f <= fmax; f *= Math.pow(2, 1 / 24)) {
+    let a = f / w / df, b = (f * w) / df;
+    if (b - a < 1) { const c = (a + b) / 2; a = c - 0.5; b = c + 0.5; }
+    out.push([f, 10 * lg((at(b) - at(a)) / (b - a) + 1e-30)]);
+  }
+  return out;
+};
+/* Decadimento spettrale: energia per tempo e frequenza, in dB rispetto al massimo. */
+AC.spectrogram = function (h, fs, i0, tmax) {
+  const N = AC.nextPow2(Math.round(0.04 * fs)), hop = Math.round(0.006 * fs), nb = 56, f0 = 50, f1 = Math.min(12000, fs / 2.2);
+  const edges = []; for (let b = 0; b <= nb; b++) edges.push(f0 * Math.pow(f1 / f0, b / nb));
+  const frames = Math.max(1, Math.min(Math.floor(((tmax || 0.6) * fs) / hop), Math.floor((h.length - i0 - 1) / hop)));
+  const z = [], win = new Float64Array(N); for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N);
+  let mx = 1e-30;
+  for (let t = 0; t < frames; t++) {
+    const re = new Float64Array(N), im = new Float64Array(N), s = i0 + t * hop - N / 2;
+    for (let i = 0; i < N; i++) { const j = s + i; re[i] = j >= 0 && j < h.length ? h[j] * win[i] : 0; }
+    AC.fft(re, im, false);
+    const row = new Float64Array(nb);
+    for (let b = 0; b < nb; b++) {
+      const ka = Math.max(1, Math.floor((edges[b] * N) / fs)), kb = Math.max(ka + 1, Math.ceil((edges[b + 1] * N) / fs)); let p = 0;
+      for (let k = ka; k < kb && k < N / 2; k++) p += re[k] * re[k] + im[k] * im[k];
+      row[b] = p / (kb - ka); if (row[b] > mx) mx = row[b];
+    }
+    z.push(row);
+  }
+  return { z: z.map((r) => Array.from(r, (v) => 10 * lg(v / mx + 1e-12))), dt: hop / fs, edges };
+};
+/* Modi propri della stanza rettangolare e frequenza di Schroeder. */
+AC.roomModes = function (room, fmax) {
+  const { L, W, H } = room, out = [], c = AC.C, nx = Math.ceil((2 * fmax * L) / c), ny = Math.ceil((2 * fmax * W) / c), nz = Math.ceil((2 * fmax * H) / c);
+  for (let a = 0; a <= nx; a++) for (let b = 0; b <= ny; b++) for (let d = 0; d <= nz; d++) {
+    if (!a && !b && !d) continue;
+    const f = (c / 2) * Math.sqrt((a / L) ** 2 + (b / W) ** 2 + (d / H) ** 2);
+    if (f <= fmax) out.push({ f, n: [a, b, d], type: [a, b, d].filter(Boolean).length === 1 ? 'assiale' : [a, b, d].filter(Boolean).length === 2 ? 'tangenziale' : 'obliquo' });
+  }
+  return out.sort((p, q) => p.f - q.f);
+};
+AC.schroeder = (room, T) => 2000 * Math.sqrt(T / (room.L * room.W * room.H));
+AC.aWeight = function (f) {
+  const f2 = f * f, ra = (12194 ** 2 * f2 * f2) / ((f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2));
+  return 20 * lg(ra + 1e-30) + 2.0;
+};
+AC.THIRDS = []; for (let n = 14; n <= 42; n++) AC.THIRDS.push(Math.pow(10, n / 10));
 
 if (typeof module !== 'undefined') module.exports = AC;

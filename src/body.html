@@ -1,40 +1,22 @@
+<div class="brand">
+  <div class="brand-in">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="7" fill="var(--brand-mark)"/><g fill="var(--brand-bg)"><rect x="6" y="14" width="3" height="6" rx="1.5"/><rect x="11" y="9" width="3" height="16" rx="1.5"/><rect x="16" y="5" width="3" height="24" rx="1.5"/><rect x="21" y="11" width="3" height="12" rx="1.5"/><rect x="26" y="15" width="3" height="4" rx="1.5"/></g></svg>
+    <div><h1>Rilievo Acustico</h1><p>Studio M · misura, analisi e progetto del trattamento</p></div>
+  </div>
+</div>
 <div class="wrap">
-  <div class="top">
-    <div>
-      <h1>Rilievo Acustico</h1>
-      <p class="lead">Dalla geometria dell'ambiente e da una misura fatta con il dispositivo al dimensionamento dei pannelli fonoassorbenti.</p>
-    </div>
-    <nav class="steps" role="tablist" aria-label="Fasi del rilievo">
-      <button role="tab" id="tab-room" data-step="room" aria-selected="true"><span>1</span>Ambiente</button>
-      <button role="tab" id="tab-meas" data-step="meas" aria-selected="false"><span>2</span>Misura</button>
-      <button role="tab" id="tab-treat" data-step="treat" aria-selected="false"><span>3</span>Intervento</button>
-      <button role="tab" id="tab-report" data-step="report" aria-selected="false"><span>4</span>Report</button>
-    </nav>
-  </div>
-
-  <div class="panel" id="guide">
-    <header><h2>Percorso guidato</h2><span class="note" id="guide-note"></span></header>
-    <div class="guide" id="guide-list"></div>
-  </div>
+  <nav class="steps" role="tablist" aria-label="Fasi del rilievo">
+    <button role="tab" id="tab-room" data-step="room" aria-selected="true"><i>1</i><span>Stanza</span></button>
+    <button role="tab" id="tab-meas" data-step="meas" aria-selected="false"><i>2</i><span>Misura</span></button>
+    <button role="tab" id="tab-treat" data-step="treat" aria-selected="false"><i>3</i><span>Pannelli</span></button>
+    <button role="tab" id="tab-lab" data-step="lab" aria-selected="false"><i>4</i><span>Analisi</span></button>
+    <button role="tab" id="tab-report" data-step="report" aria-selected="false"><i>5</i><span>Relazione</span></button>
+  </nav>
 
   <section class="step" id="s-room">
+    <p class="hint"><b>Passo 1.</b> Inserisci le tre misure della stanza (o carica la scansione) e scegli il tipo di ambiente. Il resto è già compilato con valori tipici.</p>
     <div class="cols">
       <div>
-        <div class="panel">
-          <header><h2>Scansione LiDAR</h2></header>
-          <ol class="advice">
-            <li>Su iPhone o iPad Pro apri <b>Polycam</b>, <b>3D Scanner App</b> o <b>Scaniverse</b> e scegli la modalità LiDAR.</li>
-            <li>Cammina lungo le pareti inquadrando pavimento, soffitto e tutti gli angoli.</li>
-            <li>Esporta il modello in formato <b>OBJ</b> (va bene anche lo ZIP che lo contiene) e salvalo in File.</li>
-            <li>Caricalo qui sotto: lunghezza, larghezza e altezza si compilano da sole e la stanza compare nella vista 3D.</li>
-          </ol>
-          <div class="fields two">
-            <label>File OBJ o ZIP<input type="file" id="scan-file" accept=".obj,.zip,text/plain,application/zip"></label>
-            <label>Asse verticale<select id="scan-up"><option value="y">Y (predefinito)</option><option value="z">Z (se la stanza appare coricata)</option></select></label>
-          </div>
-          <p class="note">Senza scansione: misura la stanza con un metro e compila i tre campi qui sotto.</p>
-          <p class="note" id="scan-info" hidden></p>
-        </div>
         <div class="panel">
           <header><h2>Dimensioni</h2><span class="note" id="geo-out"></span></header>
           <div class="fields">
@@ -42,28 +24,39 @@
             <label>Larghezza (m)<input type="number" id="in-W" data-k="W" min="1" max="100" step="0.05"></label>
             <label>Altezza (m)<input type="number" id="in-H" data-k="H" min="1.8" max="30" step="0.05"></label>
           </div>
-          <h3>Superfici</h3>
-          <div class="fields one"><label>Finiture tipiche (compila le sei superfici, poi correggi dove serve)<select id="preset"><option value="">Scegli il tipo di ambiente…</option></select></label></div>
-          <div class="fields two" id="mats"></div>
-          <h3>Aperture e arredi</h3>
-          <div class="fields two">
-            <label>Vetrate (m²)<input type="number" id="in-windows" data-k="windows" min="0" step="0.5"></label>
-            <label>Porte (m²)<input type="number" id="in-doors" data-k="doors" min="0" step="0.5"></label>
-            <label>Persone presenti<input type="number" id="in-people" data-k="people" min="0" step="1"></label>
-            <label>Sedie imbottite<input type="number" id="in-chairs" data-k="chairs" min="0" step="1"></label>
-          </div>
+          <details>
+            <summary>Ho una scansione LiDAR</summary>
+            <ol class="advice">
+              <li>Su iPhone o iPad Pro apri <b>Polycam</b>, <b>3D Scanner App</b> o <b>Scaniverse</b> in modalità LiDAR.</li>
+              <li>Cammina lungo le pareti inquadrando pavimento, soffitto e angoli.</li>
+              <li>Esporta in <b>OBJ</b> (va bene lo ZIP che lo contiene) e caricalo qui: le misure si compilano da sole.</li>
+            </ol>
+            <div class="fields two">
+              <label>File OBJ o ZIP<input type="file" id="scan-file" accept=".obj,.zip,text/plain,application/zip"></label>
+              <label>Asse verticale<select id="scan-up"><option value="y">Y (predefinito)</option><option value="z">Z (se la stanza appare coricata)</option></select></label>
+            </div>
+          </details>
+          <p class="note" id="scan-info" hidden></p>
         </div>
         <div class="panel">
-          <header><h2>Sorgente e microfono</h2></header>
-          <p class="note">Posizioni durante la misura, in metri dall'angolo in basso a sinistra della pianta (x lungo la lunghezza, y lungo la larghezza, z dal pavimento). Servono per attribuire ogni riflessione a una superficie.</p>
-          <div class="fields">
-            <label>Sorgente x<input type="number" id="in-sx" data-pos="src.0" min="0" step="0.1"></label>
-            <label>Sorgente y<input type="number" id="in-sy" data-pos="src.1" min="0" step="0.1"></label>
-            <label>Sorgente z<input type="number" id="in-sz" data-pos="src.2" min="0" step="0.1"></label>
-            <label>Microfono x<input type="number" id="in-mx" data-pos="mic.0" min="0" step="0.1"></label>
-            <label>Microfono y<input type="number" id="in-my" data-pos="mic.1" min="0" step="0.1"></label>
-            <label>Microfono z<input type="number" id="in-mz" data-pos="mic.2" min="0" step="0.1"></label>
-          </div>
+          <header><h2>Tipo di ambiente</h2></header>
+          <div class="fields one"><label>Finiture tipiche<select id="preset"><option value="">Scegli…</option></select></label></div>
+          <details>
+            <summary>Correggi le singole superfici e gli arredi</summary>
+            <div class="fields two" id="mats"></div>
+            <div class="fields two">
+              <label>Vetrate (m²)<input type="number" id="in-windows" data-k="windows" min="0" step="0.5"></label>
+              <label>Porte (m²)<input type="number" id="in-doors" data-k="doors" min="0" step="0.5"></label>
+              <label>Persone presenti<input type="number" id="in-people" data-k="people" min="0" step="1"></label>
+              <label>Sedie imbottite<input type="number" id="in-chairs" data-k="chairs" min="0" step="1"></label>
+            </div>
+          </details>
+          <div class="fields one"><label>Destinazione d'uso<select id="use"></select></label></div>
+        </div>
+        <div class="panel">
+          <header><h2>Foto dell'ambiente</h2><span class="note">facoltative, finiscono nella relazione</span></header>
+          <input type="file" id="photo-file" accept="image/*" multiple>
+          <div class="photos" id="photos"></div>
         </div>
       </div>
       <div>
@@ -73,59 +66,123 @@
           <p class="note" id="v3d-note"></p>
         </div>
         <div class="panel">
-          <header><h2>Pianta e prime riflessioni</h2><span class="note">vista dall'alto</span></header>
-          <div id="plan" class="chart"></div>
-          <div class="scroll"><table id="first-table"></table></div>
-        </div>
-        <div class="panel">
           <header><h2>Riverbero previsto dai materiali</h2><span class="note">formula di Eyring</span></header>
           <div class="scroll"><table id="model-table"></table></div>
         </div>
-        <div class="panel">
-          <header><h2>Foto dell'ambiente</h2></header>
-          <p class="note">Documentano superfici e materiali e finiscono nel report.</p>
-          <input type="file" id="photo-file" accept="image/*" multiple>
-          <div class="photos" id="photos"></div>
-        </div>
       </div>
     </div>
+    <div class="navrow"><span></span><button class="btn primary" data-go="meas">Avanti: misura →</button></div>
   </section>
 
   <section class="step" id="s-meas" hidden>
+    <p class="hint"><b>Passo 2.</b> Metti microfono e sorgente come nella pianta, premi il pulsante e resta in silenzio. Alla fine vedrai subito dove mettere i pannelli.</p>
     <div class="panel">
-      <header><h2>Dove mettere microfono e sorgente</h2><button class="btn" id="btn-recpos">Usa le posizioni consigliate</button></header>
+      <header><h2>A · Posiziona microfono e sorgente</h2><button class="btn" id="btn-recpos">Usa le posizioni consigliate</button></header>
       <div class="cols">
         <div><div id="plan2" class="chart"></div></div>
         <div>
           <ul class="advice" id="mic-advice"></ul>
-          <div class="fields two">
-            <label>Microfono utilizzato<select id="mic-type"></select></label>
-            <label>Modello (facoltativo)<input type="text" id="mic-model" placeholder="es. iPhone 15 Pro"></label>
-          </div>
-          <p class="note" id="mic-note"></p>
+          <details>
+            <summary>Microfono usato e posizioni esatte</summary>
+            <div class="fields two">
+              <label>Microfono utilizzato<select id="mic-type"></select></label>
+              <label>Modello (facoltativo)<input type="text" id="mic-model" placeholder="es. iPhone 15 Pro"></label>
+            </div>
+            <p class="note" id="mic-note"></p>
+            <div class="fields">
+              <label>Sorgente x<input type="number" id="in-sx" data-pos="src.0" min="0" step="0.1"></label>
+              <label>Sorgente y<input type="number" id="in-sy" data-pos="src.1" min="0" step="0.1"></label>
+              <label>Sorgente z<input type="number" id="in-sz" data-pos="src.2" min="0" step="0.1"></label>
+              <label>Microfono x<input type="number" id="in-mx" data-pos="mic.0" min="0" step="0.1"></label>
+              <label>Microfono y<input type="number" id="in-my" data-pos="mic.1" min="0" step="0.1"></label>
+              <label>Microfono z<input type="number" id="in-mz" data-pos="mic.2" min="0" step="0.1"></label>
+            </div>
+            <p class="note">Metri dall'angolo in basso a sinistra della pianta: x lungo la lunghezza, y lungo la larghezza, z dal pavimento.</p>
+          </details>
         </div>
       </div>
     </div>
     <div class="panel">
-      <header><h2>Acquisizione</h2><span class="tag" id="meas-tag"></span></header>
+      <header><h2>B · Misura</h2><span class="tag" id="meas-tag"></span></header>
       <div class="btnrow">
-        <button class="btn primary" id="btn-sweep">Avvia la misura<small>Registra, emette i suoni di test, si ferma da sola e salva il file</small></button>
-        <button class="btn" id="btn-clap">Misura con impulso<small>Senza altoparlante: battito di mani o palloncino, 6 s</small></button>
-        <button class="btn primary" id="btn-play" hidden>Riproduci i suoni di test<small>Da registrare con un altro dispositivo o un'altra app</small></button>
+        <button class="btn primary big" id="btn-sweep">Avvia la misura<small>Registra, emette i suoni di test, si ferma da sola e salva il file</small></button>
+        <button class="btn primary big" id="btn-play" hidden>Riproduci i suoni di test<small>Da registrare con un altro dispositivo o un'altra app</small></button>
         <label class="btn filebtn" id="btn-file" for="audio-file">Carica audio o video<small>Registrazione dei suoni di test o di un impulso</small><input type="file" id="audio-file" accept="audio/*,video/*,.wav,.m4a,.mp3,.aac,.caf,.mp4,.mov,.webm,.ogg"></label>
-        <button class="btn" id="btn-demo">Simula dalla stanza<small>Risposta calcolata dalla geometria</small></button>
+        <button class="btn" id="btn-clap">Misura con impulso<small>Senza altoparlante: battito di mani o palloncino, 6 s</small></button>
+        <button class="btn" id="btn-demo">Simula dalla stanza<small>Risposta calcolata, per provare</small></button>
       </div>
       <div class="status" id="live-note" hidden>Questa pagina pubblicata non può usare il microfono. Per misurare da qui:
         <ol class="advice"><li>Avvia la registrazione su un secondo dispositivo, oppure con Memo Vocali o la fotocamera, tenendolo nel punto del microfono.</li><li>Premi «Riproduci i suoni di test» e resta in silenzio fino alla fine.</li><li>Ferma la registrazione e caricala con «Carica audio o video»: lo sweep viene riconosciuto in automatico.</li></ol>
       </div>
       <p class="status" id="meas-status" hidden></p>
       <div class="scroll" id="rec-wrap" hidden><table id="rec-table"></table></div>
-      <p class="note">Per lo sweep alza il volume e appoggia il dispositivo su un supporto. Gli altoparlanti di telefoni e tablet emettono poco sotto i 250 Hz: per le basse frequenze usa una cassa esterna oppure il metodo a impulso con un palloncino.</p>
+      <p class="note">Alza il volume e appoggia il dispositivo su un supporto. Gli altoparlanti di telefoni e tablet emettono poco sotto i 250 Hz: per le basse frequenze usa una cassa esterna.</p>
     </div>
-    <div class="tiles" id="tiles"></div>
+    <div class="panel result">
+      <header><h2>C · Risultato</h2></header>
+      <p class="verdict" id="verdict"></p>
+      <div class="tiles" id="tiles"></div>
+    </div>
+    <div class="navrow"><button class="btn" data-go="room">← Stanza</button><button class="btn primary" data-go="treat">Avanti: dove mettere i pannelli →</button></div>
+  </section>
+
+  <section class="step" id="s-treat" hidden>
+    <p class="hint"><b>Passo 3.</b> Ecco quanti pannelli servono e dove vanno. La proposta si aggiorna da sola a ogni misura; puoi modificarla in fondo alla pagina.</p>
+    <div class="tiles" id="treat-tiles"></div>
+    <div class="panel">
+      <header><h2>Dove installare i pannelli</h2><span class="note">trascina la vista 3D per ruotarla</span></header>
+      <canvas id="view3d-b" class="v3d" aria-label="Vista tridimensionale della stanza con i pannelli"></canvas>
+      <div class="scroll"><table id="layout-table"></table></div>
+      <h3>Sviluppo delle pareti</h3>
+      <p class="note">Pianta al centro, pareti ribaltate verso l'esterno: è il disegno da dare a chi installa.</p>
+      <div class="legend" id="layout-legend"></div>
+      <div id="layout" class="chart"></div>
+      <ul class="advice" id="advice"></ul>
+    </div>
+    <div class="cols">
+      <div>
+        <div class="panel">
+          <header><h2>Obiettivo</h2></header>
+          <div class="fields one">
+            <label>Tempo di riverbero obiettivo a 500–1000 Hz (s)<input type="number" id="target" min="0.15" max="3" step="0.05"></label>
+          </div>
+          <p class="note" id="target-note"></p>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <header><h2>Prima e dopo</h2><span class="note" id="base-note"></span></header>
+          <div id="rt-chart" class="chart"></div>
+          <div class="scroll"><table id="rt-table"></table></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <header><h2>Materiali e quantità</h2><button class="btn primary" id="btn-propose">Ricalcola la proposta</button></header>
+      <p class="note">Spunta i prodotti che vuoi impiegare e ricalcola, oppure correggi a mano superfici e prezzi.</p>
+      <div class="scroll"><table id="prod-table"></table></div>
+      <p class="status err" id="cap-warn" hidden></p>
+    </div>
+    <div class="navrow"><button class="btn" data-go="meas">← Misura</button><button class="btn primary" data-go="report">Avanti: relazione →</button></div>
+  </section>
+
+  <section class="step" id="s-lab" hidden>
+    <p class="hint"><b>Analisi dettagliata.</b> Gli stessi grafici di un software di misura: risposta in frequenza, decadimento spettrale, riflessioni, riverbero, modi della stanza e fonometro.</p>
+    <div class="panel">
+      <header><h2>Risposta in frequenza (SPL)</h2>
+        <label class="inline">Lisciatura<select id="fr-smooth"><option value="48">1/48</option><option value="24">1/24</option><option value="12">1/12</option><option value="6" selected>1/6</option><option value="3">1/3</option></select></label>
+      </header>
+      <p class="note" id="fr-note"></p>
+      <div id="fr-chart" class="chart"></div>
+    </div>
+    <div class="panel">
+      <header><h2>Decadimento spettrale</h2><span class="note">quanto a lungo risuona ogni frequenza</span></header>
+      <canvas id="waterfall" class="heat" aria-label="Spettrogramma del decadimento: frequenza in orizzontale, tempo in verticale"></canvas>
+      <div class="legend"><span>0 dB</span><span class="ramp"></span><span>−60 dB</span></div>
+    </div>
     <div class="panel">
       <header><h2>Riflessioni ed echi</h2>
-        <label style="flex-direction:row;align-items:center;gap:8px">Finestra<select id="etc-range" style="width:auto"><option value="60">60 ms</option><option value="200">200 ms</option><option value="500">500 ms</option></select></label>
+        <label class="inline">Finestra<select id="etc-range"><option value="60">60 ms</option><option value="200">200 ms</option><option value="500">500 ms</option></select></label>
       </header>
       <p class="note">Curva energia-tempo sopra 400 Hz, riferita al suono diretto. I numeri indicano le riflessioni che emergono dal decadimento.</p>
       <div id="etc-chart" class="chart"></div>
@@ -133,54 +190,37 @@
       <div class="scroll"><table id="refl-table"></table></div>
     </div>
     <div class="panel">
-      <header><h2>Decadimento</h2>
-        <label style="flex-direction:row;align-items:center;gap:8px">Banda<select id="decay-band" style="width:auto"></select></label>
+      <header><h2>Riverbero (RT60)</h2>
+        <label class="inline">Banda<select id="decay-band"></select></label>
       </header>
       <div id="decay-chart" class="chart"></div>
       <div class="scroll"><table id="band-table"></table></div>
     </div>
-  </section>
-
-  <section class="step" id="s-treat" hidden>
-    <div class="cols">
-      <div>
-        <div class="panel">
-          <header><h2>Obiettivo</h2></header>
-          <div class="fields one">
-            <label>Destinazione d'uso<select id="use"></select></label>
-            <label>Tempo di riverbero obiettivo a 500–1000 Hz (s)<input type="number" id="target" min="0.15" max="3" step="0.05"></label>
-          </div>
-          <p class="note" id="target-note"></p>
-        </div>
-        <div class="tiles" id="treat-tiles"></div>
-      </div>
-      <div>
-        <div class="panel">
-          <header><h2>Tempo di riverbero per banda</h2><span class="note" id="base-note"></span></header>
-          <div id="rt-chart" class="chart"></div>
-          <div class="scroll"><table id="rt-table"></table></div>
-        </div>
-      </div>
+    <div class="panel">
+      <header><h2>Modi della stanza</h2><span class="note" id="modes-note"></span></header>
+      <div class="scroll"><table id="modes-table"></table></div>
     </div>
     <div class="panel">
-      <header><h2>Dove installare i pannelli</h2><span class="note">sviluppo della stanza: pianta al centro, pareti ribaltate verso l'esterno</span></header>
-      <canvas id="view3d-b" class="v3d" aria-label="Vista tridimensionale della stanza con i pannelli"></canvas>
-      <div class="legend" id="layout-legend"></div>
-      <div id="layout" class="chart"></div>
-      <div class="scroll"><table id="layout-table"></table></div>
-      <ul class="advice" id="advice"></ul>
+      <header><h2>Prime riflessioni previste</h2><span class="note">dalla geometria</span></header>
+      <div id="plan" class="chart"></div>
+      <div class="scroll"><table id="first-table"></table></div>
     </div>
     <div class="panel">
-      <header><h2>Materiali fonoassorbenti</h2><button class="btn primary" id="btn-propose">Proponi l'intervento</button></header>
-      <p class="note">Spunta i prodotti che vuoi impiegare: la proposta sceglie le superfici minime per rientrare nell'obiettivo al costo più basso. Puoi correggere a mano superfici e prezzi.</p>
-      <div class="scroll"><table id="prod-table"></table></div>
-      <p class="status err" id="cap-warn" hidden></p>
+      <header><h2>Fonometro e analizzatore in tempo reale</h2><button class="btn primary" id="btn-spl">Avvia</button></header>
+      <p class="note" id="spl-note">Misura il rumore di fondo e lo spettro in terzi d'ottava. Senza calibrazione i valori sono indicativi.</p>
+      <div class="tiles" id="spl-tiles"></div>
+      <canvas id="rta" class="heat" aria-label="Spettro in terzi d'ottava in tempo reale"></canvas>
+      <div class="fields two">
+        <label>Livello letto su un fonometro di riferimento (dBA)<input type="number" id="cal-ref" step="0.5" placeholder="es. 72"></label>
+        <label>&nbsp;<button class="btn" id="btn-cal">Calibra sul livello attuale</button></label>
+      </div>
     </div>
   </section>
 
   <section class="step" id="s-report" hidden>
+    <p class="hint"><b>Passo 5.</b> Inserisci cliente e ambiente, poi scarica la relazione firmata.</p>
     <div class="panel">
-      <header><h2>Relazione acustica</h2><button class="btn primary noprint" id="btn-pdf">Scarica il PDF per il cliente</button></header>
+      <header><h2>Relazione acustica</h2><button class="btn primary big noprint" id="btn-pdf">Scarica il PDF per il cliente</button></header>
       <div class="fields two noprint">
         <label>Cliente<input type="text" id="rep-client" placeholder="Nome del cliente"></label>
         <label>Ambiente o progetto<input type="text" id="rep-project" placeholder="es. Sala riunioni, sede di Roma"></label>
@@ -188,5 +228,6 @@
       <p class="status noprint" id="pdf-status" hidden></p>
       <div id="report-body"></div>
     </div>
+    <div class="navrow"><button class="btn" data-go="treat">← Pannelli</button><span></span></div>
   </section>
 </div>
