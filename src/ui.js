@@ -303,7 +303,7 @@
     const ok = after.every((t, b) => t <= tTar[b] * 1.2 && t >= tTar[b] * 0.8 * (b ? 1 : 0.8));
     const tile = (label, val, unit, sub) => `<div class="tile"><span>${label}</span><b>${val}<small>${unit}</small></b><em>${sub}</em></div>`;
     $('#treat-tiles').innerHTML = tile('RT60 attuale', f(mid(cur.t)), 's', '500–1000 Hz') + tile('RT60 dopo l\'intervento', f(mid(after)), 's', ok ? 'entro l\'obiettivo di ' + f(tm) + ' s' : mid(after) > tm ? 'sopra l\'obiettivo di ' + f(tm) + ' s' : 'sotto l\'obiettivo di ' + f(tm) + ' s').replace('class="tile"', 'class="tile ' + (ok ? 'ok' : 'bad') + '"') +
-      tile('Superficie trattata', f(tot.area, 1), 'm²', `${tot.cnt} pannelli 120 × 60 cm`) + tile('Costo materiali', Math.round(tot.cost).toLocaleString('it-IT'), '€', 'prezzi indicativi, posa esclusa');
+      tile('Superficie trattata', f(tot.area, 1), 'm²', `${AC.pl(tot.cnt)} 120 × 60 cm`) + tile('Costo materiali', Math.round(tot.cost).toLocaleString('it-IT'), '€', 'prezzi indicativi, posa esclusa');
     const adv = advice(cur, after, tTar, tot);
     $('#advice').innerHTML = adv.map((a) => `<li>${a}</li>`).join('');
     return { cur, tTar, after, tot, adv, tm, lay: renderLayout() };
@@ -409,8 +409,8 @@
   function renderVerdict(t) {
     const real = state.meas && state.meas.real, use = AC.USES.find((u) => u.id === state.use).name.toLowerCase(), cur = mid(t.cur.t);
     const need = t.cur.t.some((v, b) => v > t.tTar[b] * 1.2);
-    $('#verdict').innerHTML = (real ? '' : '<span class="tag">Esempio simulato</span> ') + `Riverbero ${real ? 'misurato' : 'stimato'}: <b>${f(cur)} s</b>. Per ${esc(use)} di ${f(geo().V, 0)} m³ l'obiettivo è <b>${f(t.tm)} s</b>. ` +
-      (need ? `Servono circa <b>${f(t.tot.area, 0)} m²</b> di materiale fonoassorbente${t.tot.cnt ? ` (${t.tot.cnt} pannelli)` : ''}.` : 'La stanza è già entro l\'obiettivo.');
+    $('#verdict').innerHTML = (state.meas && state.meas.warn ? '<span class="tag">Misura poco attendibile: ripetila</span> ' : '') + (real ? '' : '<span class="tag">Esempio simulato</span> ') + `Riverbero ${real ? 'misurato' : 'stimato'}: <b>${f(cur)} s</b>. Per ${esc(use)} di ${f(geo().V, 0)} m³ l'obiettivo è <b>${f(t.tm)} s</b>. ` +
+      (need ? `Servono circa <b>${f(t.tot.area, 0)} m²</b> di materiale fonoassorbente${t.tot.cnt ? ` (${AC.pl(t.tot.cnt)})` : ''}.` : 'La stanza è già entro l\'obiettivo.');
   }
 
   /* ---------- Analisi dettagliata ---------- */
@@ -513,7 +513,9 @@
   function setMeas(res, label, extra, kind) {
     state.meas = { res, label, real: true, kind }; state.touched.manual = false;
     const tail = extra ? ' ' + extra : '';
-    if (res.broad.inr < 25) status('Segnale troppo debole rispetto al rumore di fondo: alza il volume, avvicina la sorgente o ripeti in silenzio.' + tail, true);
+    const warn = AC.measureWarning(res, mid(model())); state.meas.warn = warn;
+    if (warn) status(warn + tail, true);
+    else if (res.broad.inr < 25) status('Segnale troppo debole rispetto al rumore di fondo: alza il volume, avvicina la sorgente o ripeti in silenzio.' + tail, true);
     else if (res.bands.some((b) => !b.rt)) status('Misura acquisita. Nelle bande senza dinamica sufficiente il calcolo dell\'intervento usa il modello dei materiali.' + tail);
     else status('Misura acquisita e analizzata.' + tail);
     renderAll();
@@ -688,7 +690,7 @@
     // sintesi in quattro riquadri
     const okAfter = t.after.every((v, b) => v <= t.tTar[b] * 1.2);
     const boxes = [['RT60 attuale', f(mid(t.cur.t)) + ' s', state.meas && state.meas.real ? 'misurato, 500-1000 Hz' : 'stimato, 500-1000 Hz'], ['RT60 obiettivo', f(t.tm) + ' s', AC.USES.find((u) => u.id === state.use).name],
-      ['RT60 dopo l\'intervento', f(mid(t.after)) + ' s', okAfter ? 'entro la tolleranza' : 'da verificare'], ['Materiale', f(t.tot.area, 1) + ' m²', `${t.tot.cnt} pannelli · ${Math.round(t.tot.cost).toLocaleString('it-IT')} EUR`]];
+      ['RT60 dopo l\'intervento', f(mid(t.after)) + ' s', okAfter ? 'entro la tolleranza' : 'da verificare'], ['Materiale', f(t.tot.area, 1) + ' m²', `${AC.pl(t.tot.cnt)} · ${Math.round(t.tot.cost).toLocaleString('it-IT')} EUR`]];
     const bwd = (CW - 9) / 4;
     boxes.forEach((b, k) => {
       const x = M + k * (bwd + 3);
@@ -711,6 +713,7 @@
       kv([['Metodo', m.label], ['Microfono', micLabel()], ['Posizione microfono (x; y; z)', r.mic.map((v) => f(v)).join('; ') + ' m'], ['Posizione sorgente (x; y; z)', r.src.map((v) => f(v)).join('; ') + ' m'],
         ['RT60 a 500-1000 Hz', f(res.rtMid) + ' s'], ['EDT', f(res.edtMid) + ' s'], ['C50 / D50', f(res.c50, 1) + ' dB / ' + f(res.d50 * 100, 0) + ' %'], ['Dinamica', f(res.broad.inr, 0) + ' dB'],
         ['Flutter echo', res.flutter ? `periodo ${f(res.flutter.periodMs, 0)} ms` : 'non rilevato']]);
+      if (m.warn) para('ATTENZIONE - ' + m.warn, 9.5, [208, 59, 59]);
       if ($('#fr-chart')._opts) { need(88); h2('Risposta in frequenza'); chart($('#fr-chart')._opts, 62); para($('#fr-note').textContent, 8.5, [71, 84, 92]); }
       need(95); h2('Riflessioni ed echi');
       chart($('#etc-chart')._opts, 62);

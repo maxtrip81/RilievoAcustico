@@ -568,7 +568,7 @@ AC.layout = function (room, areas) {
       if (!r) list = cs;
     }
     const name = AC.SURFACES.find((s) => s.id === w.id).name, ref = w.id === 'left' || w.id === 'right' ? 'dalla parete frontale' : 'dalla parete sinistra';
-    notes.push({ face: name, text: `${w.k} pannelli 60 × 120 cm in ${used === 1 ? 'una fila, bordo inferiore a 0,90 m da terra' : 'due file, bordi inferiori a 0,30 e 1,55 m da terra'}; centri a ${list.map(num).join(' · ')} m ${ref}` + (used === 2 ? ', seconda fila allineata alla prima' : '') + '.' + (snapped ? ' Un pannello è centrato sul punto di prima riflessione.' : '') });
+    notes.push({ face: name, text: `${AC.pl(w.k)} 60 × 120 cm in ${used === 1 ? 'una fila, bordo inferiore a 0,90 m da terra' : 'due file, bordi inferiori a 0,30 e 1,55 m da terra'}; centri a ${list.map(num).join(' · ')} m ${ref}` + (used === 2 ? ', seconda fila allineata alla prima' : '') + '.' + (snapped ? ' Un pannello è centrato sul punto di prima riflessione.' : '') });
   }
   if (n > 0) notes.push({ face: 'Pareti', text: `${n} pannelli non trovano posto con questa disposizione: valuta il soffitto o pannelli più spessi.` });
   // soffitto 120 x 60 cm
@@ -576,7 +576,7 @@ AC.layout = function (room, areas) {
   if (nc > 0) {
     const cols = Math.max(1, Math.min(Math.floor(L / 1.3), Math.ceil(Math.sqrt((nc * L) / W / 2)))), rws = Math.ceil(nc / cols);
     for (let i = 0; i < nc; i++) rects.push({ face: 'ceiling', u: ((i % cols) + 0.5) * (L / cols) - 0.6, v: (Math.floor(i / cols) + 0.5) * (W / rws) - 0.3, w: 1.2, h: 0.6, type: 'ceil' });
-    notes.push({ face: 'Soffitto', text: `${nc} pannelli 120 × 60 cm in griglia ${cols} × ${rws}, interasse ${num(L / cols)} m in lunghezza e ${num(W / rws)} m in larghezza.` });
+    notes.push({ face: 'Soffitto', text: `${AC.pl(nc)} 120 × 60 cm in griglia ${cols} × ${rws}, interasse ${num(L / cols)} m in lunghezza e ${num(W / rws)} m in larghezza.` });
   }
   if (areas.carpet > 0) {
     const cw = Math.min(L - 0.5, Math.sqrt((areas.carpet * L) / W)), ch = Math.min(W - 0.5, areas.carpet / cw);
@@ -723,6 +723,14 @@ AC.calAt = function (pts, f) {
   while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (pts[mid][0] <= f) lo = mid; else hi = mid; }
   const t = Math.log(f / pts[lo][0]) / Math.log(pts[hi][0] / pts[lo][0]);
   return pts[lo][1] + t * (pts[hi][1] - pts[lo][1]);
+};
+
+AC.pl = (n) => (n === 1 ? '1 pannello' : n + ' pannelli');
+/* Controllo di plausibilita': riconosce le misure in cui il microfono ha sentito quasi solo il suono diretto. */
+AC.measureWarning = function (res, modelMid) {
+  const direct = res.d50 > 0.97 && res.c50 > 25, early = res.rtMid && res.edtMid != null && res.edtMid < 0.35 * res.rtMid, low = res.rtMid && modelMid && res.rtMid < 0.45 * modelMid;
+  if ((direct && (early || low)) || (early && low)) return 'Misura poco attendibile: il microfono ha registrato quasi solo il suono diretto della sorgente e pochissimo la stanza. Succede quando microfono e altoparlante sono vicini (per esempio quelli integrati dello stesso computer) o quando il sistema applica la cancellazione dell\'eco. Ripeti con un microfono esterno ad almeno 2 m da una cassa separata.';
+  return '';
 };
 
 if (typeof module !== 'undefined') module.exports = AC;
