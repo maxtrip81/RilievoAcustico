@@ -17,13 +17,13 @@
     },
     use: 'riunioni', target: null, scan: null, meas: null, photos: [],
     treat: { areas: {}, enabled: Object.fromEntries(AC.PRODUCTS.map((p) => [p.id, !['mel50', 'curtain', 'carpet', 'ceil'].includes(p.id)])), prices: {} },
-    etcRange: 60, decayBand: 3, mic: { type: 'iphone', model: '' }, inputId: '', client: '', project: '', touched: {}, view: { yaw: -0.6, pitch: 0.5 }, frSmooth: 6, cal: 120, calibrated: false,
+    etcRange: 60, decayBand: 3, mic: { type: 'iphone', model: '' }, inputId: '', outputId: '', micCal: null, client: '', project: '', touched: {}, view: { yaw: -0.6, pitch: 0.5 }, frSmooth: 6, cal: 120, calibrated: false,
   };
   try {
     const saved = JSON.parse(localStorage.getItem('rilievo-acustico.v1') || 'null');
-    if (saved && saved.room && saved.room.mats) { Object.assign(state.room, saved.room); state.use = saved.use || state.use; state.target = saved.target || null; Object.assign(state.treat, saved.treat || {}); Object.assign(state.mic, saved.mic || {}); state.client = saved.client || ''; state.touched = saved.touched || {}; state.inputId = saved.inputId || ''; if (saved.cal) { state.cal = saved.cal; state.calibrated = !!saved.calibrated; } state.project = saved.project || ''; }
+    if (saved && saved.room && saved.room.mats) { Object.assign(state.room, saved.room); state.use = saved.use || state.use; state.target = saved.target || null; Object.assign(state.treat, saved.treat || {}); Object.assign(state.mic, saved.mic || {}); state.client = saved.client || ''; state.touched = saved.touched || {}; state.inputId = saved.inputId || ''; state.outputId = saved.outputId || ''; state.micCal = saved.micCal || null; if (saved.cal) { state.cal = saved.cal; state.calibrated = !!saved.calibrated; } state.project = saved.project || ''; }
   } catch (e) { /* archivio non disponibile */ }
-  const save = () => { try { localStorage.setItem('rilievo-acustico.v1', JSON.stringify({ room: state.room, use: state.use, target: state.target, treat: state.treat, mic: state.mic, client: state.client, project: state.project, touched: state.touched, inputId: state.inputId, cal: state.cal, calibrated: state.calibrated })); } catch (e) { /* idem */ } };
+  const save = () => { try { localStorage.setItem('rilievo-acustico.v1', JSON.stringify({ room: state.room, use: state.use, target: state.target, treat: state.treat, mic: state.mic, client: state.client, project: state.project, touched: state.touched, inputId: state.inputId, outputId: state.outputId, micCal: state.micCal, cal: state.cal, calibrated: state.calibrated })); } catch (e) { /* idem */ } };
 
   /* ---------- Grafico a linee con tooltip ---------- */
   let chartId = 0;
@@ -149,9 +149,12 @@
     if (Math.abs(r.mic[0] / r.L - 0.5) < 0.04 && Math.abs(r.mic[1] / r.W - 0.5) < 0.04) out.push('<b>Attenzione</b>: il centro esatto della stanza va evitato, lì alcune risonanze si annullano. Spostati di almeno 50 cm.');
     out.push('Per un rilievo completo ripeti la misura in altri due punti distanti almeno 2 m tra loro e confronta i risultati.');
     $('#mic-advice').innerHTML = out.map((a) => `<li>${a}</li>`).join('');
-    $('#mic-note').textContent = AC.MICS.find((m) => m.id === state.mic.type).note;
+    $('#mic-note').textContent = AC.MICS.find((m) => m.id === state.mic.type).note.replace(" Se il produttore fornisce un file di calibrazione, la correzione non è ancora applicata dall'app.", '');
+    $('#btn-calrm').hidden = !state.micCal;
+    if (state.micCal) $('#cal-info').textContent = `Calibrazione attiva: ${state.micCal.name}, ${state.micCal.pts.length} punti da ${f(state.micCal.pts[0][0], 0)} a ${f(state.micCal.pts[state.micCal.pts.length - 1][0], 0)} Hz` + (state.micCal.sens != null ? `, sensibilità ${f(state.micCal.sens, 1)} dB` : '') + '. Applicata alla risposta in frequenza e all\'analizzatore.';
+    else if (!/non valido/.test($('#cal-info').textContent)) $('#cal-info').textContent = 'Se il produttore fornisce la curva del tuo esemplare (file .txt o .cal con righe «frequenza dB»), caricala: corregge la risposta in frequenza e l\'analizzatore.';
   }
-  const micLabel = () => AC.MICS.find((m) => m.id === state.mic.type).name + (state.mic.model ? ' · ' + state.mic.model : '');
+  const micLabel = () => AC.MICS.find((m) => m.id === state.mic.type).name + (state.mic.model ? ' · ' + state.mic.model : '') + (state.micCal ? ' · calibrazione ' + state.micCal.name : '');
 
   function renderMeas() {
     const m = state.meas;
@@ -421,9 +424,9 @@
     if (!m._fr || m._frS !== state.frSmooth) { m._fr = AC.freqResponse(res.ir, res.fs, state.frSmooth); m._frS = state.frSmooth; }
     const abs = m.kind === 'sweep' && state.calibrated;
     let off = abs ? 20 * Math.log10(0.8 / Math.SQRT2) + state.cal : -Math.max.apply(null, m._fr.filter((q) => q[0] > 100 && q[0] < 10000).map((q) => q[1]));
-    const pts = m._fr.map((q) => [q[0], q[1] + off]), top = Math.ceil(Math.max.apply(null, pts.map((q) => q[1])) / 10) * 10 + 10, yt = [];
+    const mc = state.micCal, pts = m._fr.map((q) => [q[0], q[1] + off - (mc ? AC.calAt(mc.pts, q[0]) : 0)]), top = Math.ceil(Math.max.apply(null, pts.map((q) => q[1])) / 10) * 10 + 10, yt = [];
     for (let v = top; v >= top - 70; v -= 10) yt.push(v);
-    $('#fr-note').textContent = (abs ? 'Livello al microfono durante lo sweep, calibrato sul fonometro di riferimento.' : m.kind === 'sweep' ? 'Curva in dB relativi al massimo. Per leggere i dB SPL calibra il microfono con il fonometro in fondo a questa pagina.' : 'Misura a impulso: curva in dB relativi al massimo. Per i dB SPL serve la misura con lo sweep e il microfono calibrato.') + ' Le linee tratteggiate sono i modi assiali della stanza.';
+    $('#fr-note').textContent = (abs ? 'Livello al microfono durante lo sweep, calibrato sul fonometro di riferimento.' : m.kind === 'sweep' ? 'Curva in dB relativi al massimo. Per leggere i dB SPL calibra il microfono con il fonometro in fondo a questa pagina.' : 'Misura a impulso: curva in dB relativi al massimo. Per i dB SPL serve la misura con lo sweep e il microfono calibrato.') + (mc ? ` Corretta con il file di calibrazione ${mc.name}.` : '') + ' Le linee tratteggiate sono i modi assiali della stanza.';
     drawChart($('#fr-chart'), {
       label: 'Risposta in frequenza', h: 300, unit: abs ? 'dB SPL' : 'dB',
       x: { log: true, min: 20, max: Math.min(20000, res.fs / 2.2), title: 'Frequenza (Hz)', ticks: [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000].filter((v) => v <= res.fs / 2.2).map((v) => ({ v, l: v >= 1000 ? v / 1000 + 'k' : String(v) })), fmt: (x) => f(x, 0) + ' Hz' },
@@ -476,7 +479,7 @@
         for (let k = 1; k < buf.length; k++) { const fq = k * df; if (fq < 20 || fq > 20000) continue; const pw = Math.pow(10, buf[k] / 10); pz += pw; pa += pw * aw[k]; const bi = Math.round(10 * Math.log10(fq)) - 14; if (bi >= 0 && bi < bands.length) bands[bi] += pw; }
         splRaw = 10 * Math.log10(pa + 1e-30); const la = splRaw + state.cal; eSum += Math.pow(10, la / 10); n++; mx = Math.max(mx, la);
         splTiles(la, 10 * Math.log10(eSum / n), mx, 10 * Math.log10(pz + 1e-30) + state.cal);
-        drawRta(Array.from(bands, (v) => 10 * Math.log10(v + 1e-30) + state.cal));
+        drawRta(Array.from(bands, (v, i) => 10 * Math.log10(v + 1e-30) + state.cal - (state.micCal ? AC.calAt(state.micCal.pts, AC.THIRDS[i]) : 0)));
       };
       spl = { stream, ctx, timer: setInterval(tick, 150) }; btn.textContent = 'Ferma';
       note.textContent = state.calibrated ? 'Fonometro calibrato sul riferimento inserito.' : 'Non calibrato: i valori sono indicativi. Per calibrare, leggi il livello su un fonometro vero mentre c\'è un rumore costante, scrivilo qui sotto e premi «Calibra».';
@@ -489,6 +492,7 @@
   const later = (fn) => new Promise((res, rej) => setTimeout(() => { try { res(fn()); } catch (e) { rej(e); } }, 40));
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const micConstraints = () => ({ audio: Object.assign({ echoCancellation: false, noiseSuppression: false, autoGainControl: false }, state.inputId ? { deviceId: { exact: state.inputId } } : {}) });
+  const useOutput = async (ctx) => { if (state.outputId && ctx.setSinkId) { try { await ctx.setSinkId(state.outputId); } catch (e) { /* resta l'uscita predefinita */ } } };
   async function listInputs() {
     const sel = $('#dev-in');
     if (window.claude || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) { $('#dev-row').hidden = true; return; }
@@ -497,6 +501,11 @@
       sel.innerHTML = '<option value="">Predefinito del sistema</option>' + ins.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Microfono ' + (i + 1) + ' (consenti il microfono per vedere il nome)')}</option>`).join('');
       if (state.inputId && !ins.some((d) => d.deviceId === state.inputId)) state.inputId = '';
       sel.value = state.inputId;
+      const out = $('#dev-out'), canSink = 'setSinkId' in (window.AudioContext || window.webkitAudioContext).prototype;
+      const outs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications');
+      out.innerHTML = '<option value="">Predefinita del sistema</option>' + (canSink ? outs.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Uscita ' + (i + 1))}</option>`).join('') : '');
+      if (state.outputId && !outs.some((d) => d.deviceId === state.outputId)) state.outputId = '';
+      out.value = state.outputId; out.disabled = !canSink;
     } catch (e) { /* elenco non disponibile */ }
   }
   window.__buildPdf = () => buildPdf();
@@ -549,7 +558,7 @@
     const stream = await navigator.mediaDevices.getUserMedia(micConstraints());
     listInputs();
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    await ctx.resume();
+    await ctx.resume(); await useOutput(ctx);
     for (let n = 3; n > 0; n--) { status(`La registrazione parte tra ${n}…`); await wait(1000); }
     const src = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(4096, 1, 1), mute = ctx.createGain(), chunks = [];
     mute.gain.value = 0;
@@ -583,7 +592,7 @@
   async function doPlay() {
     busy(true);
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume();
+      const ctx = new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume(); await useOutput(ctx);
       const sweep = AC.testSweep(ctx.sampleRate), buf = ctx.createBuffer(1, sweep.length, ctx.sampleRate); buf.getChannelData(0).set(sweep);
       const node = ctx.createBufferSource(); node.buffer = buf; node.connect(ctx.destination); node.start(ctx.currentTime + 1);
       for (let n = 8; n > 0; n--) { status(`Suoni di test in riproduzione: resta in silenzio e non fermare la registrazione per altri ${n} s.`); await wait(1000); }
@@ -832,6 +841,13 @@
       else if (t.id === 'use') { state.use = t.value; state.target = null; }
       else if (t.id === 'mic-type') state.mic.type = t.value;
       else if (t.id === 'dev-in') { state.inputId = t.value; save(); return; }
+      else if (t.id === 'dev-out') { state.outputId = t.value; save(); return; }
+      else if (t.id === 'cal-file') {
+        const file = t.files[0]; if (!file) return;
+        file.text().then((txt) => { const c = AC.parseCal(txt); state.micCal = { name: file.name, pts: c.pts, sens: c.sens }; renderAll(); })
+          .catch((e) => { $('#cal-info').textContent = 'File di calibrazione non valido: ' + e.message; });
+        t.value = ''; return;
+      }
       else if (t.id === 'etc-range') state.etcRange = +t.value;
       else if (t.id === 'fr-smooth') state.frSmooth = +t.value;
       else if (t.id === 'decay-band') state.decayBand = +t.value;
@@ -887,6 +903,7 @@
     $('#btn-recpos').addEventListener('click', () => { Object.assign(state.room, AC.recommendPositions(state.room)); state.touched.pos = true; fill(); renderAll(); });
     $('#btn-pdf').addEventListener('click', downloadPdf);
     $('#btn-spl').addEventListener('click', toggleSpl);
+    $('#btn-calrm').addEventListener('click', () => { state.micCal = null; renderAll(); });
     listInputs(); if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', listInputs);
     $('#btn-cal').addEventListener('click', () => {
       const ref = parseFloat($('#cal-ref').value), note = $('#spl-note');

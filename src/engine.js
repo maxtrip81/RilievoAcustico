@@ -704,4 +704,25 @@ AC.aWeight = function (f) {
 };
 AC.THIRDS = []; for (let n = 14; n <= 42; n++) AC.THIRDS.push(Math.pow(10, n / 10));
 
+/* ---------- File di calibrazione del microfono (formato REW / miniDSP / Behringer: frequenza, dB) ---------- */
+AC.parseCal = function (text) {
+  const pts = []; let sens = null;
+  for (const line of text.split(/\r?\n/)) {
+    const sm = line.match(/sens\w*\s*factor\s*=?\s*(-?[\d.]+)/i); if (sm) sens = parseFloat(sm[1]);
+    const m = line.replace(/,(\d)/g, '.$1').match(/^\s*(\d+(?:\.\d+)?(?:e[+-]?\d+)?)[\s;\t]+(-?\d+(?:\.\d+)?)/i);
+    if (m) { const f = parseFloat(m[1]), d = parseFloat(m[2]); if (f >= 1 && f <= 100000 && Math.abs(d) < 60) pts.push([f, d]); }
+  }
+  pts.sort((a, b) => a[0] - b[0]);
+  if (pts.length < 5) throw new Error('Il file non contiene una curva di calibrazione leggibile (righe «frequenza dB»).');
+  return { pts, sens };
+};
+AC.calAt = function (pts, f) {
+  if (f <= pts[0][0]) return pts[0][1];
+  if (f >= pts[pts.length - 1][0]) return pts[pts.length - 1][1];
+  let lo = 0, hi = pts.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (pts[mid][0] <= f) lo = mid; else hi = mid; }
+  const t = Math.log(f / pts[lo][0]) / Math.log(pts[hi][0] / pts[lo][0]);
+  return pts[lo][1] + t * (pts[hi][1] - pts[lo][1]);
+};
+
 if (typeof module !== 'undefined') module.exports = AC;

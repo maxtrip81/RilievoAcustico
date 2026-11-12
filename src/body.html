@@ -89,6 +89,11 @@
               <label>Modello (facoltativo)<input type="text" id="mic-model" placeholder="es. iPhone 15 Pro"></label>
             </div>
             <p class="note" id="mic-note"></p>
+            <div class="fields two">
+              <label>File di calibrazione del microfono (facoltativo)<input type="file" id="cal-file" accept=".txt,.cal,.frd,.csv,text/plain"></label>
+              <label>&nbsp;<button class="btn" id="btn-calrm" hidden>Rimuovi la calibrazione</button></label>
+            </div>
+            <p class="note" id="cal-info">Se il produttore fornisce la curva del tuo esemplare (file .txt o .cal con righe «frequenza dB»), caricala: corregge la risposta in frequenza e l'analizzatore.</p>
             <div class="fields">
               <label>Sorgente x<input type="number" id="in-sx" data-pos="src.0" min="0" step="0.1"></label>
               <label>Sorgente y<input type="number" id="in-sy" data-pos="src.1" min="0" step="0.1"></label>
@@ -106,7 +111,7 @@
       <header><h2>B · Misura</h2><span class="tag" id="meas-tag"></span></header>
       <div class="fields two" id="dev-row">
         <label>Ingresso audio (microfono)<select id="dev-in"><option value="">Predefinito del sistema</option></select></label>
-        <label>Uscita audio<span class="note" id="dev-out">I suoni di test escono dall'uscita audio scelta nel sistema: collega le casse e selezionale come uscita prima di misurare.</span></label>
+        <label>Uscita audio (casse)<select id="dev-out"><option value="">Predefinita del sistema</option></select></label>
       </div>
       <div class="btnrow">
         <button class="btn primary big" id="btn-sweep">Avvia la misura<small>Registra, emette i suoni di test, si ferma da sola e salva il file</small></button>
