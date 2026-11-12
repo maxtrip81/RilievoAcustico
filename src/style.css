@@ -1,8 +1,8 @@
 /* Layout: fascia di marca in alto, cinque fasi in sequenza; in ogni fase le azioni a sinistra e i disegni a destra. */
 :root {
   --bg: #eef2f3; --panel: #fcfcfb; --ink: #0f181c; --ink-2: #45525a; --muted: #7b868d; --line: #dbe1e4; --line-strong: #bcc6cb;
-  --accent: #0e6073; --accent-ink: #ffffff; --accent-soft: #dceef2;
-  --brand-bg: #0b3540; --brand-ink: #f2f7f8; --brand-sub: #9fc3cc; --brand-mark: #7fd0de;
+  --accent: #5e17eb; --accent-ink: #ffffff; --accent-soft: #ece4fd; --logo-filter: none;
+  --brand-bg: #5e17eb; --brand-ink: #ffffff; --brand-sub: #ddd0fb;
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
   --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
   --shadow: 0 1px 2px rgba(15, 24, 28, 0.05), 0 4px 14px rgba(15, 24, 28, 0.04);
@@ -12,15 +12,15 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0d1214; --panel: #181d1f; --ink: #eef1f2; --ink-2: #bcc6cb; --muted: #86929a; --line: #283033; --line-strong: #3a454a;
-    --accent: #5fbdd0; --accent-ink: #06262e; --accent-soft: #13313a;
-    --brand-bg: #0a2229; --brand-ink: #eef6f8; --brand-sub: #86aeb8; --brand-mark: #5fbdd0;
+    --accent: #a98bff; --accent-ink: #160638; --accent-soft: #241a47; --logo-filter: invert(1);
+    --brand-bg: #5e17eb; --brand-ink: #ffffff; --brand-sub: #ddd0fb;
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --shadow: none; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0d1214; --panel: #181d1f; --ink: #eef1f2; --ink-2: #bcc6cb; --muted: #86929a; --line: #283033; --line-strong: #3a454a;
-  --accent: #5fbdd0; --accent-ink: #06262e; --accent-soft: #13313a;
-  --brand-bg: #0a2229; --brand-ink: #eef6f8; --brand-sub: #86aeb8; --brand-mark: #5fbdd0;
+  --accent: #a98bff; --accent-ink: #160638; --accent-soft: #241a47; --logo-filter: invert(1);
+  --brand-bg: #5e17eb; --brand-ink: #ffffff; --brand-sub: #ddd0fb;
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --shadow: none; color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -32,8 +32,10 @@ h3 { font: 600 12px var(--font-body); text-transform: uppercase; letter-spacing:
 p { margin: 0; }
 .brand { background: var(--brand-bg); color: var(--brand-ink); }
 .brand-in { max-width: 1180px; margin: 0 auto; padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; align-items: center; gap: 14px; }
-.brand svg { flex: none; }
-.brand h1 { font-size: 22px; font-weight: 600; }
+.brand-logo { height: 30px; width: auto; flex: none; display: block; }
+.brand-sep { width: 1px; align-self: stretch; background: var(--brand-sub); opacity: 0.5; }
+.sign img { height: 18px; width: auto; margin: 6px auto 0; display: block; filter: var(--logo-filter); }
+.brand h1 { font-size: 20px; font-weight: 600; }
 .brand p { font-size: 13px; color: var(--brand-sub); }
 .wrap { max-width: 1180px; margin: 0 auto; padding-block: 18px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 18px; }
 .steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }

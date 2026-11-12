@@ -16,7 +16,7 @@ function uniquePath(dir, name) {
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1280, height: 900, minWidth: 420, minHeight: 560, backgroundColor: '#0b3540', title: 'Rilievo Acustico',
+    width: 1280, height: 900, minWidth: 420, minHeight: 560, backgroundColor: '#5e17eb', title: 'Rilievo Acustico',
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   win.loadFile(path.join(__dirname, 'app', 'index.html'));

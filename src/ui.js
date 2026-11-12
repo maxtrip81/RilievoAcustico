@@ -5,6 +5,7 @@
   const f = (v, d) => (v == null || !isFinite(v) ? 'n.d.' : v.toFixed(d == null ? 2 : d).replace('.', ','));
   const bandLabel = (fc) => (fc >= 1000 ? fc / 1000 + ' kHz' : fc + ' Hz');
   const surfName = (id) => (AC.SURFACES.find((s) => s.id === id) || { name: '—' }).name;
+  const LOGO_WHITE = '__LOGO_WHITE__', LOGO_BLACK = '__LOGO_BLACK__', LOGO_RATIO = 159 / 640;
   const SIGN_NAME = 'Massimiliano Mascioli Trippa', SIGN_ORG = 'Studio M';
   const WHERE = { wall: 'parete', ceiling: 'soffitto', floor: 'pavimento' };
   const KIND = { prima: ['Prima riflessione', 'warn'], precoce: ['Riflessione precoce', ''], tardiva: ['Riflessione tardiva', ''], eco: ['Eco percepibile', 'crit'] };
@@ -330,7 +331,7 @@
     s += `<div><h3>Dove installare i pannelli</h3><div class="chart">${$('#layout').innerHTML}</div><div class="scroll">${$('#layout-table').outerHTML.replace('id="layout-table"', '')}</div><ul class="advice">${t.adv.map((a) => `<li>${a}</li>`).join('')}</ul></div>`;
     if (state.photos.length) s += '<div><h3>Foto</h3><div class="photos">' + state.photos.map((p) => `<figure><img src="${p.url}" alt=""><figcaption class="note">${esc(p.caption)}</figcaption></figure>`).join('') + '</div></div>';
     s += '<p class="note">Coefficienti di assorbimento e prezzi sono valori tipici: verifica le schede tecniche dei prodotti scelti. Le misure con microfono non calibrato hanno valore indicativo e non sostituiscono un collaudo secondo UNI EN ISO 3382.</p>';
-    s += `<div class="sign"><b>${SIGN_NAME}</b>per ${SIGN_ORG}</div>`;
+    s += `<div class="sign"><b>${SIGN_NAME}</b><img src="${LOGO_BLACK}" alt="${SIGN_ORG}"></div>`;
     $('#report-body').innerHTML = s;
   }
 
@@ -632,7 +633,7 @@
     let y = M;
     const need = (h) => { if (y + h > PH - 20) { doc.addPage(); y = M; } };
     const font = (b, size, col) => { doc.setFont('helvetica', b ? 'bold' : 'normal'); doc.setFontSize(size); const c = col || [16, 24, 28]; doc.setTextColor(c[0], c[1], c[2]); };
-    const h2 = (txt) => { need(18); y += 4; doc.setFillColor(14, 96, 115); doc.rect(M, y - 0.4, 2.4, 4.4, 'F'); font(true, 11.5, [11, 53, 64]); doc.text(P(txt), M + 5, y + 3.3); doc.setDrawColor(219, 225, 228); doc.setLineWidth(0.2); doc.line(M, y + 6, PW - M, y + 6); y += 10; };
+    const h2 = (txt) => { need(18); y += 4; doc.setFillColor(94, 23, 235); doc.rect(M, y - 0.4, 2.4, 4.4, 'F'); font(true, 11.5, [16, 24, 28]); doc.text(P(txt), M + 5, y + 3.3); doc.setDrawColor(219, 225, 228); doc.setLineWidth(0.2); doc.line(M, y + 6, PW - M, y + 6); y += 10; };
     const para = (txt, size, col) => { font(false, size || 9.5, col); for (const ln of doc.splitTextToSize(P(txt), CW)) { need(4.6); doc.text(ln, M, y + 3.2); y += 4.6; } y += 1.2; };
     const table = (rows, widths, o) => {
       o = o || {};
@@ -678,13 +679,11 @@
     };
 
     // intestazione: fascia di marca
-    doc.setFillColor(11, 53, 64); doc.rect(0, 0, PW, 34, 'F');
-    doc.setFillColor(127, 208, 222); doc.roundedRect(M, 9, 14, 14, 2.5, 2.5, 'F');
-    doc.setFillColor(11, 53, 64); [[2.6, 5.6, 2.6], [4.7, 3.6, 6.6], [6.8, 2, 10], [8.9, 4.4, 5], [11, 6, 1.8]].forEach((b) => doc.roundedRect(M + b[0], 9 + b[1], 1.2, b[2], 0.6, 0.6, 'F'));
-    font(true, 19, [242, 247, 248]); doc.text(P(SIGN_ORG).toUpperCase(), M + 19, 16.5);
-    font(false, 9, [159, 195, 204]); doc.text(P(SIGN_NAME), M + 19, 22);
-    font(true, 15, [242, 247, 248]); doc.text('Relazione acustica', PW - M, 16.5, { align: 'right' });
-    font(false, 9, [159, 195, 204]); doc.text([state.client, state.project, today].filter(Boolean).map(P).join('  ·  '), PW - M, 22, { align: 'right' });
+    doc.setFillColor(94, 23, 235); doc.rect(0, 0, PW, 34, 'F');
+    doc.addImage(LOGO_WHITE, 'PNG', M, 8.5, 44, 44 * LOGO_RATIO);
+    font(false, 9, [221, 208, 251]); doc.text(P(SIGN_NAME), M, 26.5);
+    font(true, 16, [255, 255, 255]); doc.text('Relazione acustica', PW - M, 17, { align: 'right' });
+    font(false, 9, [221, 208, 251]); doc.text([state.client, state.project, today].filter(Boolean).map(P).join('  ·  '), PW - M, 26.5, { align: 'right' });
     y = 42;
     // sintesi in quattro riquadri
     const okAfter = t.after.every((v, b) => v <= t.tTar[b] * 1.2);
@@ -777,11 +776,11 @@
     para('Coefficienti di assorbimento e prezzi sono valori tipici: vanno verificati sulle schede tecniche dei prodotti scelti. Le misure eseguite con microfono non calibrato hanno valore indicativo e non sostituiscono un collaudo secondo UNI EN ISO 3382.', 8.5, [71, 84, 92]);
 
     // firma
-    need(34); y += 10;
+    need(44); y += 10;
     font(false, 9, [71, 84, 92]); doc.text('Data: ' + today, M, y + 14); doc.text('Il tecnico', PW - M - 35, y, { align: 'center' });
     doc.setDrawColor(16, 24, 28); doc.setLineWidth(0.3); doc.line(PW - M - 70, y + 14, PW - M, y + 14);
     font(true, 11); doc.text(P(SIGN_NAME), PW - M - 35, y + 19.5, { align: 'center' });
-    font(false, 9, [71, 84, 92]); doc.text('per ' + P(SIGN_ORG), PW - M - 35, y + 24, { align: 'center' });
+    doc.addImage(LOGO_BLACK, 'PNG', PW - M - 35 - 13, y + 23, 26, 26 * LOGO_RATIO);
 
     const n = doc.getNumberOfPages();
     for (let i = 1; i <= n; i++) { doc.setPage(i); font(false, 7.5, [123, 134, 141]); doc.text(`${P(SIGN_ORG)} · ${P(SIGN_NAME)}`, M, PH - 9); doc.text(`Pagina ${i} di ${n}`, PW - M, PH - 9, { align: 'right' }); }
