@@ -104,6 +104,10 @@
     </div>
     <div class="panel">
       <header><h2>B · Misura</h2><span class="tag" id="meas-tag"></span></header>
+      <div class="fields two" id="dev-row">
+        <label>Ingresso audio (microfono)<select id="dev-in"><option value="">Predefinito del sistema</option></select></label>
+        <label>Uscita audio<span class="note" id="dev-out">I suoni di test escono dall'uscita audio scelta nel sistema: collega le casse e selezionale come uscita prima di misurare.</span></label>
+      </div>
       <div class="btnrow">
         <button class="btn primary big" id="btn-sweep">Avvia la misura<small>Registra, emette i suoni di test, si ferma da sola e salva il file</small></button>
         <button class="btn primary big" id="btn-play" hidden>Riproduci i suoni di test<small>Da registrare con un altro dispositivo o un'altra app</small></button>

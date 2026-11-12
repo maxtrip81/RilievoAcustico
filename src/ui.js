@@ -17,13 +17,13 @@
     },
     use: 'riunioni', target: null, scan: null, meas: null, photos: [],
     treat: { areas: {}, enabled: Object.fromEntries(AC.PRODUCTS.map((p) => [p.id, !['mel50', 'curtain', 'carpet', 'ceil'].includes(p.id)])), prices: {} },
-    etcRange: 60, decayBand: 3, mic: { type: 'iphone', model: '' }, client: '', project: '', touched: {}, view: { yaw: -0.6, pitch: 0.5 }, frSmooth: 6, cal: 120, calibrated: false,
+    etcRange: 60, decayBand: 3, mic: { type: 'iphone', model: '' }, inputId: '', client: '', project: '', touched: {}, view: { yaw: -0.6, pitch: 0.5 }, frSmooth: 6, cal: 120, calibrated: false,
   };
   try {
     const saved = JSON.parse(localStorage.getItem('rilievo-acustico.v1') || 'null');
-    if (saved && saved.room && saved.room.mats) { Object.assign(state.room, saved.room); state.use = saved.use || state.use; state.target = saved.target || null; Object.assign(state.treat, saved.treat || {}); Object.assign(state.mic, saved.mic || {}); state.client = saved.client || ''; state.touched = saved.touched || {}; if (saved.cal) { state.cal = saved.cal; state.calibrated = !!saved.calibrated; } state.project = saved.project || ''; }
+    if (saved && saved.room && saved.room.mats) { Object.assign(state.room, saved.room); state.use = saved.use || state.use; state.target = saved.target || null; Object.assign(state.treat, saved.treat || {}); Object.assign(state.mic, saved.mic || {}); state.client = saved.client || ''; state.touched = saved.touched || {}; state.inputId = saved.inputId || ''; if (saved.cal) { state.cal = saved.cal; state.calibrated = !!saved.calibrated; } state.project = saved.project || ''; }
   } catch (e) { /* archivio non disponibile */ }
-  const save = () => { try { localStorage.setItem('rilievo-acustico.v1', JSON.stringify({ room: state.room, use: state.use, target: state.target, treat: state.treat, mic: state.mic, client: state.client, project: state.project, touched: state.touched, cal: state.cal, calibrated: state.calibrated })); } catch (e) { /* idem */ } };
+  const save = () => { try { localStorage.setItem('rilievo-acustico.v1', JSON.stringify({ room: state.room, use: state.use, target: state.target, treat: state.treat, mic: state.mic, client: state.client, project: state.project, touched: state.touched, inputId: state.inputId, cal: state.cal, calibrated: state.calibrated })); } catch (e) { /* idem */ } };
 
   /* ---------- Grafico a linee con tooltip ---------- */
   let chartId = 0;
@@ -464,7 +464,8 @@
     if (spl) { clearInterval(spl.timer); spl.stream.getTracks().forEach((t) => t.stop()); spl.ctx.close(); spl = null; btn.textContent = 'Avvia'; return; }
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nomic');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const stream = await navigator.mediaDevices.getUserMedia(micConstraints());
+      listInputs();
       const ctx = new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume();
       const an = ctx.createAnalyser(); an.fftSize = 8192; an.smoothingTimeConstant = 0; ctx.createMediaStreamSource(stream).connect(an);
       const buf = new Float32Array(an.frequencyBinCount), df = ctx.sampleRate / an.fftSize, aw = Array.from(buf, (_, k) => Math.pow(10, AC.aWeight(Math.max(1, k * df)) / 10));
@@ -487,6 +488,17 @@
   const busy = (b) => { $$('#s-meas .btnrow button.btn').forEach((x) => { x.disabled = b; }); $('#audio-file').disabled = b; };
   const later = (fn) => new Promise((res, rej) => setTimeout(() => { try { res(fn()); } catch (e) { rej(e); } }, 40));
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const micConstraints = () => ({ audio: Object.assign({ echoCancellation: false, noiseSuppression: false, autoGainControl: false }, state.inputId ? { deviceId: { exact: state.inputId } } : {}) });
+  async function listInputs() {
+    const sel = $('#dev-in');
+    if (window.claude || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) { $('#dev-row').hidden = true; return; }
+    try {
+      const ins = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications');
+      sel.innerHTML = '<option value="">Predefinito del sistema</option>' + ins.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Microfono ' + (i + 1) + ' (consenti il microfono per vedere il nome)')}</option>`).join('');
+      if (state.inputId && !ins.some((d) => d.deviceId === state.inputId)) state.inputId = '';
+      sel.value = state.inputId;
+    } catch (e) { /* elenco non disponibile */ }
+  }
   window.__buildPdf = () => buildPdf();
   function setMeas(res, label, extra, kind) {
     state.meas = { res, label, real: true, kind }; state.touched.manual = false;
@@ -534,7 +546,8 @@
   const stamp = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
   async function record(seconds, withSweep, msg) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nomic');
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    const stream = await navigator.mediaDevices.getUserMedia(micConstraints());
+    listInputs();
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     await ctx.resume();
     for (let n = 3; n > 0; n--) { status(`La registrazione parte tra ${n}…`); await wait(1000); }
@@ -785,7 +798,7 @@
     $('#mats').innerHTML = AC.SURFACES.map((s) => `<label>${s.name}<select id="mat-${s.id}" data-mat="${s.id}">${Object.keys(AC.MATERIALS).map((k) => `<option value="${k}">${AC.MATERIALS[k].name}</option>`).join('')}</select></label>`).join('');
     $('#use').innerHTML = AC.USES.map((u) => `<option value="${u.id}">${u.name}</option>`).join('');
     $('#decay-band').innerHTML = '<option value="-1">Banda larga</option>' + AC.BANDS.map((b, i) => `<option value="${i}">${bandLabel(b)}</option>`).join('');
-    $('#mic-type').innerHTML = AC.MICS.map((m) => `<option value="${m.id}">${m.name}</option>`).join('');
+    { const opt = (m) => `<option value="${m.id}">${m.name}</option>`; $('#mic-type').innerHTML = `<optgroup label="Microfoni di misura">${AC.MICS.filter((m) => m.group).map(opt).join('')}</optgroup><optgroup label="Microfoni integrati e generici">${AC.MICS.filter((m) => !m.group).map(opt).join('')}</optgroup>`; }
     $('#mic-type').value = state.mic.type; $('#mic-model').value = state.mic.model; $('#rep-client').value = state.client; $('#rep-project').value = state.project;
     $('#preset').innerHTML += AC.PRESETS.map((x) => `<option value="${x.id}">${x.name}</option>`).join('');
     bind3D($('#view3d')); bind3D($('#view3d-b'));
@@ -818,6 +831,7 @@
       else if (t.dataset.en) state.treat.enabled[t.dataset.en] = t.checked;
       else if (t.id === 'use') { state.use = t.value; state.target = null; }
       else if (t.id === 'mic-type') state.mic.type = t.value;
+      else if (t.id === 'dev-in') { state.inputId = t.value; save(); return; }
       else if (t.id === 'etc-range') state.etcRange = +t.value;
       else if (t.id === 'fr-smooth') state.frSmooth = +t.value;
       else if (t.id === 'decay-band') state.decayBand = +t.value;
@@ -873,6 +887,7 @@
     $('#btn-recpos').addEventListener('click', () => { Object.assign(state.room, AC.recommendPositions(state.room)); state.touched.pos = true; fill(); renderAll(); });
     $('#btn-pdf').addEventListener('click', downloadPdf);
     $('#btn-spl').addEventListener('click', toggleSpl);
+    listInputs(); if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', listInputs);
     $('#btn-cal').addEventListener('click', () => {
       const ref = parseFloat($('#cal-ref').value), note = $('#spl-note');
       if (!spl || splRaw == null || splRaw < -110) { note.textContent = 'Avvia prima il fonometro, poi calibra mentre c\'è un rumore costante.'; return; }
